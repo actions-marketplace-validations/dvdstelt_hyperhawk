@@ -1,6 +1,6 @@
 {
     "name":  "hyperhawk",
-    "version":  "1.8.4",
+    "version":  "1.8.5",
     "description":  "GitHub Action that scans markdown files for broken links",
     "main":  "dist/index.js",
     "scripts":  {
