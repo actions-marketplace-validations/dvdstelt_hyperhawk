@@ -119,6 +119,7 @@ function buildExternalLinks(baseUrl: string, testFile: string): LinkInfo[] {
     { url: `${baseUrl}/auth-required`, text: 'auth required', line: 1008, lineContent: `[auth required](${baseUrl}/auth-required)` },
     { url: `${baseUrl}/cross-domain-redirect`, text: 'cross-domain redirect', line: 1009, lineContent: `[cross-domain redirect](${baseUrl}/cross-domain-redirect)` },
     { url: `${baseUrl}/not-found`, text: 'plain 404', line: 1010, lineContent: `[plain 404](${baseUrl}/not-found)` },
+    { url: 'https://github.com/user-attachments/assets/35163316-65df-4f8d-bf85-03650025a7b4', text: 'user attachment', line: 1011, lineContent: '[user attachment](https://github.com/user-attachments/assets/35163316-65df-4f8d-bf85-03650025a7b4)' },
   ];
 
   return entries.map(e => ({
