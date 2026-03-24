@@ -223,12 +223,16 @@ async function checkInternal(link: LinkInfo, config: Config): Promise<CheckResul
     return { link, ok: true };
   }
 
-  const isRootRelative = urlWithoutAnchor.startsWith('/');
+  // Decode percent-encoded characters (e.g. %20 for spaces) so the path
+  // matches the actual filename on disk.
+  const decodedPath = decodeURIComponent(urlWithoutAnchor);
+
+  const isRootRelative = decodedPath.startsWith('/');
   const sourceDir = path.dirname(path.join(config.repoRoot, link.filePath));
 
   const resolvedPath = isRootRelative
-    ? path.join(config.repoRoot, urlWithoutAnchor)
-    : path.resolve(sourceDir, urlWithoutAnchor);
+    ? path.join(config.repoRoot, decodedPath)
+    : path.resolve(sourceDir, decodedPath);
 
   const exists = fs.existsSync(resolvedPath);
 
@@ -251,9 +255,9 @@ async function checkInternal(link: LinkInfo, config: Config): Promise<CheckResul
 
   // --- Link is broken: search for the target file ---
 
-  const filename = path.basename(urlWithoutAnchor);
-  const stem = path.basename(urlWithoutAnchor, path.extname(urlWithoutAnchor));
-  const ext = path.extname(urlWithoutAnchor);
+  const filename = path.basename(decodedPath);
+  const stem = path.basename(decodedPath, path.extname(decodedPath));
+  const ext = path.extname(decodedPath);
 
   let correctedAbs: string | undefined;
   let isFuzzy = false;
