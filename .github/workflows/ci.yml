@@ -47,7 +47,7 @@ jobs:
           fi
 
       # On push: if the build changed dist/, commit it back automatically.
-      # [skip ci] in the message prevents this commit from re-triggering the workflow.
+      # GITHUB_TOKEN pushes do not re-trigger workflows, so no loop risk.
       - name: Commit rebuilt dist
         if: github.event_name == 'push'
         run: |
@@ -57,7 +57,7 @@ jobs:
           if git diff --staged --quiet; then
             echo "dist/ is already up to date, nothing to commit"
           else
-            git commit -m "chore: rebuild dist [skip ci]"
+            git commit -m "chore: rebuild dist"
             git push
           fi
 
