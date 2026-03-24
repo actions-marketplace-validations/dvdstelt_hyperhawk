@@ -42,6 +42,10 @@ Look at the [agents guide](../AGENTS.md) for coding conventions.
 
 The [action config](../action.yml) has all the inputs documented.
 
+## Percent-encoded Paths (spaces in filenames)
+
+See the [file with spaces](./file%20with%20spaces.md) for an example.
+
 ## Skipped Links (should not be checked)
 
 Contact us at [email](mailto:user@domain.net) for support.
