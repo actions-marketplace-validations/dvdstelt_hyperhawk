@@ -579,9 +579,25 @@ function isSameHost(urlA: string, urlB: string): boolean {
 }
 
 /**
+ * GitHub user-attachment assets (uploaded images/files in issues, PRs, and
+ * discussions) live under a fixed path and cannot be deleted without GitHub
+ * admin intervention, so they are effectively permanent. Verifying them
+ * would require passing GitHub auth headers through the S3 redirect chain,
+ * adding complexity for no real benefit. Trust them unconditionally.
+ */
+function isGitHubUserAttachment(url: string): boolean {
+  return url.startsWith('https://github.com/user-attachments/assets/');
+}
+
+/**
  * Check an external HTTP/HTTPS link.
  */
 async function checkExternal(link: LinkInfo, config: Config): Promise<CheckResult> {
+  if (isGitHubUserAttachment(link.url)) {
+    core.debug(`[external] ${link.url} is a GitHub user-attachment asset, treating as valid`);
+    return { link, ok: true };
+  }
+
   const cached = resultCache.get(link.url);
   if (cached) {
     // Reconstruct suggestion from cached correctedUrl since lineContent varies per call site
