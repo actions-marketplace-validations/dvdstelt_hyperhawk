@@ -494,16 +494,30 @@ async function checkSameOrg(link: LinkInfo, octokit: Octokit, config: Config): P
       const ref = parts[3];
       const filePath = parts.slice(4).join('/');
 
-      core.debug(`[same-org] Verifying file ${filePath} at ref ${ref} in ${repoOwner}/${repoName}`);
+      const urlKind = parts[2] as 'blob' | 'tree';
+      core.debug(`[same-org] Verifying ${urlKind} ${filePath} at ref ${ref} in ${repoOwner}/${repoName}`);
 
       try {
-        await octokit.rest.repos.getContent({
+        const content = await octokit.rest.repos.getContent({
           owner: repoOwner,
           repo: repoName,
           path: filePath,
           ref,
         });
         core.debug(`[same-org] File ${filePath} found in ${repoOwner}/${repoName}`);
+
+        // Suggest fixing blob/tree mismatch: /blob/ is for files, /tree/ is for directories.
+        const isArray = Array.isArray(content.data);
+        const contentType = isArray ? 'dir' : (content.data as { type: string }).type;
+        const expectedKind = contentType === 'dir' ? 'tree' : 'blob';
+        if (urlKind !== expectedKind) {
+          core.debug(`[same-org] ${filePath} is a ${contentType} but URL uses /${urlKind}/, suggesting /${expectedKind}/`);
+          const correctedUrl = link.url.replace(`/${urlKind}/${ref}/`, `/${expectedKind}/${ref}/`);
+          const suggestion = link.lineContent.trimEnd().replace(link.url, correctedUrl);
+          const r = { ok: true, correctedUrl, suggestionOnly: true };
+          resultCache.set(link.url, r);
+          return { link, ...r, suggestion };
+        }
       } catch (err: unknown) {
         const status = getStatusCode(err);
         core.debug(`[same-org] File ${filePath} in ${repoOwner}/${repoName} returned HTTP ${status ?? 'unknown'}: ${String(err)}`);
