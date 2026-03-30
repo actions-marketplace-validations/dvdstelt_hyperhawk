@@ -62,6 +62,10 @@ The [missing file](https://github.com/dvdstelt/hyperhawk/blob/main/does-not-exis
 
 The [configuration guide](https://github.com/dvdstelt/hyperhawk/blob/main/docs/configuraton.md) has a typo and should fuzzy-match to the real file.
 
+## URLs with Parentheses (e.g. Wikipedia)
+
+Learn about [.NET](https://en.wikipedia.org/wiki/.NET_Framework_(software)) on Wikipedia.
+
 ## External Links (verified when external checking is enabled)
 
 Thanks to [@dvdstelt](https://github.com/dvdstelt) for the contribution.

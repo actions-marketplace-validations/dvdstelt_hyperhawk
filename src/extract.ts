@@ -72,7 +72,10 @@ export function extractLinks(filePath: string, config: Config): LinkInfo[] {
   }
 
   // Regex patterns
-  const inlineRegex = /!?\[([^\]]*)\]\(([^)]+)\)/g;
+  // Inline links: supports one level of balanced parentheses inside the URL
+  // so that URLs like https://en.wikipedia.org/wiki/Topic_(details) are
+  // captured in full instead of being truncated at the first ')'.
+  const inlineRegex = /!?\[([^\]]*)\]\(((?:[^()\s]|\([^()]*\))+(?:\s+"[^"]*")?)\)/g;
   const refLinkRegex = /!?\[([^\]]+)\]\[([^\]]*)\]/g;
   const htmlHrefRegex = /(?:href|src)="([^"]+)"/g;
   const autolinkRegex = /<(https?:\/\/[^>]+)>/g;
