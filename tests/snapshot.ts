@@ -242,6 +242,16 @@ async function runTests(repoRoot: string, testFile: string, baseUrl: string): Pr
     process.stdout.write(mergeLines.join('\n') + '\n');
   }
 
+  // --- Extraction test: verify external URLs from the test document were parsed correctly ---
+  // This catches regex bugs (e.g. URLs with balanced parentheses being truncated).
+  const extractedExternal = links
+    .filter(l => l.type === 'external')
+    .map(l => `extract:${l.line} | ${l.url}`)
+    .sort();
+  if (extractedExternal.length > 0) {
+    process.stdout.write(extractedExternal.join('\n') + '\n');
+  }
+
   restoreStdout();
 }
 
