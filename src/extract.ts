@@ -80,9 +80,18 @@ export function extractLinks(filePath: string, config: Config): LinkInfo[] {
   const htmlHrefRegex = /(?:href|src)="([^"]+)"/g;
   const autolinkRegex = /<(https?:\/\/[^>]+)>/g;
 
+  let inCodeBlock = false;
+
   for (let i = 0; i < lines.length; i++) {
     const lineContent = lines[i];
     const lineNumber = i + 1;
+
+    // Toggle code block state on fenced code block markers (``` or ~~~)
+    if (/^(`{3,}|~{3,})/.test(lineContent.trimStart())) {
+      inCodeBlock = !inCodeBlock;
+      continue;
+    }
+    if (inCodeBlock) continue;
 
     // Skip reference definition lines themselves
     if (refDefRegex.test(lineContent)) continue;
