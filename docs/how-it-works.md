@@ -15,7 +15,7 @@ Links that are not verifiable (such as `mailto:` links and URLs with invalid hos
 
 ### URL parsing
 
-HyperHawk supports one level of balanced parentheses inside markdown link URLs, so links like `[topic](https://en.wikipedia.org/wiki/Topic_(details))` are extracted correctly.
+HyperHawk supports one level of balanced parentheses inside markdown link URLs, so links like `[topic](https://en.wikipedia.org/wiki/Topic_(DJ))` are extracted correctly.
 
 Percent-encoded characters in internal link paths (e.g. `%20` for spaces) are decoded before checking the filesystem.
 
