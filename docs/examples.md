@@ -25,6 +25,14 @@
     token: ${{ secrets.GITHUB_TOKEN }}
     files: 'docs/**/*.md'
 ```
+## Scan all files except one specific file
+
+```yaml
+- uses: dvdstelt/hyperhawk@v1
+  with:
+    token: ${{ secrets.GITHUB_TOKEN }}
+    files: '**/*.md,!process/dont-scan-this-one.md'
+```
 
 ## High-concurrency scan for large repos
 
