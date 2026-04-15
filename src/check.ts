@@ -240,7 +240,7 @@ async function checkInternal(link: LinkInfo, config: Config): Promise<CheckResul
     // Link is valid. If it uses a relative path (not root-relative), suggest conversion.
     // However, skip the suggestion for same-folder links (e.g. "readme.md" or "./readme.md")
     // because they are simple and unlikely to break.
-    if (!isRootRelative) {
+    if (!isRootRelative && !isIssueTemplate(link.filePath)) {
       const normalized = urlWithoutAnchor.replace(/^\.\//, '');
       const isSameFolder = !normalized.includes('/') && !normalized.includes('\\');
       if (!isSameFolder) {
@@ -328,11 +328,23 @@ async function looksPrivate(owner: string, repo: string): Promise<boolean> {
 }
 
 /**
+ * Files in .github/ISSUE_TEMPLATE/ are rendered as GitHub issues, where
+ * relative and root-relative URLs do not work. Skip conversion suggestions
+ * for links inside these files.
+ */
+function isIssueTemplate(filePath: string): boolean {
+  return filePath.startsWith('.github/ISSUE_TEMPLATE/');
+}
+
+/**
  * Suggest rewriting a full GitHub URL that points to the current repo
  * as a local path. Uses the same convention as checkInternal: same-folder
  * files use a bare filename, everything else uses a root-relative path.
  */
 function suggestLocalPath(link: LinkInfo, parts: string[], config: Config): CheckResult {
+  if (isIssueTemplate(link.filePath)) {
+    return { link, ok: true, suggestionOnly: true };
+  }
   // parts: [owner, repo, 'blob'|'tree', ref, ...pathParts] or [owner, repo, ...]
   const hasFilePath = parts.length > 4 && (parts[2] === 'blob' || parts[2] === 'tree');
 

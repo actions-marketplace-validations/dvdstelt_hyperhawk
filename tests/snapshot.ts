@@ -132,14 +132,62 @@ function buildExternalLinks(baseUrl: string, testFile: string): LinkInfo[] {
   }));
 }
 
+/**
+ * Verify that links inside .github/ISSUE_TEMPLATE/ files do not get
+ * local-path or root-relative conversion suggestions, because issue
+ * templates are rendered as GitHub issues where relative URLs do not work.
+ */
+async function runIssueTemplateTest(repoRoot: string, testFile: string): Promise<void> {
+  const config: Config = {
+    token: '',
+    repoRoot,
+    owner: 'dvdstelt',
+    repo: 'hyperhawk',
+    strict: false,
+    checkExternal: false,
+    checkSameOrg: true,
+    ignorePatterns: [],
+    timeout: 5000,
+    filePatterns: ['.github/ISSUE_TEMPLATE/bug_report.md'],
+    concurrency: 1,
+  };
+
+  const links = extractLinks(testFile, config);
+  const results = await checkLinks(links, config, null as any);
+
+  const stabilize = (s: string): string =>
+    s.replaceAll(repoRoot, '<root>').replaceAll(path.dirname(repoRoot), '<parent>');
+
+  const lines = results
+    .map(r => {
+      const rel = path.relative(repoRoot, r.link.filePath).replace(/\\/g, '/');
+      const status = r.ok ? (r.suggestionOnly ? 'suggestion' : 'ok') : 'broken';
+      let detail = '';
+      if (!r.ok && r.correctedUrl) {
+        detail = r.isFuzzyMatch ? ` -> ${r.correctedUrl} (fuzzy)` : ` -> ${r.correctedUrl}`;
+      } else if (r.suggestionOnly && r.correctedUrl) {
+        detail = ` -> ${stabilize(r.correctedUrl)}`;
+      } else if (!r.ok) {
+        const err = stabilize(r.error ?? 'unknown');
+        detail = ` | ${err}`;
+      }
+      return `${rel}:${r.link.line} | ${stabilize(r.link.url)} | ${status}${detail}`;
+    })
+    .sort();
+
+  process.stdout.write(lines.join('\n') + '\n');
+}
+
 async function main(): Promise<void> {
   const repoRoot = path.resolve(__dirname, '..');
   const testFile = path.join(repoRoot, 'tests', 'test-document.md');
+  const issueTemplateFile = path.join(repoRoot, '.github', 'ISSUE_TEMPLATE', 'bug_report.md');
 
   const { baseUrl, close: closeServer } = await startRedirectServer();
 
   try {
     await runTests(repoRoot, testFile, baseUrl);
+    await runIssueTemplateTest(repoRoot, issueTemplateFile);
   } finally {
     await closeServer();
   }
