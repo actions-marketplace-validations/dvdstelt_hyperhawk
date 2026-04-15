@@ -180,6 +180,42 @@ async function runIssueTemplateTest(repoRoot: string, testFile: string): Promise
   process.stdout.write(lines.join('\n') + '\n');
 }
 
+/**
+ * Verify that links inside fenced code blocks are skipped when
+ * skipCodeBlocks is enabled, and that links after the code block
+ * are still extracted.
+ */
+async function runCodeBlockTest(repoRoot: string, testFile: string): Promise<void> {
+  const config: Config = {
+    token: '',
+    repoRoot,
+    owner: 'dvdstelt',
+    repo: 'hyperhawk',
+    strict: false,
+    checkExternal: false,
+    checkSameOrg: false,
+    ignorePatterns: [],
+    timeout: 5000,
+    filePatterns: ['tests/test-document.md'],
+    concurrency: 1,
+    skipCodeBlocks: true,
+    reportOnlyChanged: false,
+  };
+
+  const allLinks = extractLinks(testFile, config);
+  // Only look at links from the code block test section (lines 74+)
+  const codeBlockLinks = allLinks.filter(l => l.line >= 74);
+
+  const lines = codeBlockLinks
+    .map(l => {
+      const rel = path.relative(repoRoot, l.filePath).replace(/\\/g, '/');
+      return `codeblock:${rel}:${l.line} | ${l.url}`;
+    })
+    .sort();
+
+  process.stdout.write(lines.join('\n') + '\n');
+}
+
 async function main(): Promise<void> {
   const repoRoot = path.resolve(__dirname, '..');
   const testFile = path.join(repoRoot, 'tests', 'test-document.md');
@@ -190,6 +226,7 @@ async function main(): Promise<void> {
   try {
     await runTests(repoRoot, testFile, baseUrl);
     await runIssueTemplateTest(repoRoot, issueTemplateFile);
+    await runCodeBlockTest(repoRoot, testFile);
   } finally {
     await closeServer();
   }
