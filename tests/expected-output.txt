@@ -40,7 +40,13 @@ tests/test-document.md:59 | https://github.com/dvdstelt/hyperhawk/blob/main/test
 tests/test-document.md:61 | https://github.com/dvdstelt/hyperhawk/blob/main/does-not-exist.md | broken -> /does-not-exist.md
 tests/test-document.md:63 | https://github.com/dvdstelt/hyperhawk/blob/main/docs/configuraton.md | broken -> /docs/configuration.md (fuzzy)
 tests/test-document.md:7 | ../READM.md | broken -> /README.md (fuzzy)
+tests/test-document.md:82 | ../READM.md | broken -> /README.md (fuzzy)
 tests/test-document.md:9 | ../LICENS.md | broken | File not found: <root>/LICENS.md
 merge:tests/test-document.md:31 | ../READM.md + ../LICENS.md | Read the [README](/README.md) and the [license](../LICENS.md) before starting.
 extract:67 | https://en.wikipedia.org/wiki/.NET_Framework_(software)
 extract:71 | https://github.com/dvdstelt
+::debug::[same-org] Checking https://github.com/dvdstelt/hyperhawk/blob/main/README.md
+::debug::[same-org] URL points to current repo, suggesting local path: https://github.com/dvdstelt/hyperhawk/blob/main/README.md
+.github/ISSUE_TEMPLATE/bug_report.md:13 | https://github.com/dvdstelt/hyperhawk/blob/main/README.md | suggestion
+.github/ISSUE_TEMPLATE/bug_report.md:15 | ../docs/configuration.md | broken -> /docs/configuration.md
+codeblock:tests/test-document.md:82 | ../READM.md

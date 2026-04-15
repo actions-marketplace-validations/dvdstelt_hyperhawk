@@ -1,6 +1,6 @@
 import * as core from '@actions/core';
 import { context, getOctokit } from '@actions/github';
-import { CheckResult } from './types';
+import { CheckResult, Config } from './types';
 
 type Octokit = ReturnType<typeof getOctokit>;
 
@@ -195,7 +195,8 @@ async function reportPR(
   results: CheckResult[],
   octokit: Octokit,
   diffLines: DiffLineMap,
-  commitSha: string
+  commitSha: string,
+  config: Config
 ): Promise<void> {
   const broken = results.filter(r => !r.ok);
   const improvements = results.filter(r => r.ok && r.suggestionOnly && r.suggestion);
@@ -295,18 +296,20 @@ async function reportPR(
   // Broken links outside the visible diff: emit check annotations.
   // GitHub expands the Files Changed view to show annotated lines even
   // when they are not part of the diff hunks.
-  for (const result of notInDiff) {
-    const hint = result.correctedUrl
-      ? ` Did you mean \`${result.correctedUrl}\`${result.isFuzzyMatch ? ' (fuzzy match)' : ''}?`
-      : '';
-    core.warning(
-      `Broken ${result.link.type} link: \`${result.link.url}\`${hint}`,
-      {
-        file: result.link.filePath,
-        startLine: result.link.line,
-        title: 'Broken Link',
-      }
-    );
+  if (!config.reportOnlyChanged) {
+    for (const result of notInDiff) {
+      const hint = result.correctedUrl
+        ? ` Did you mean \`${result.correctedUrl}\`${result.isFuzzyMatch ? ' (fuzzy match)' : ''}?`
+        : '';
+      core.warning(
+        `Broken ${result.link.type} link: \`${result.link.url}\`${hint}`,
+        {
+          file: result.link.filePath,
+          startLine: result.link.line,
+          title: 'Broken Link',
+        }
+      );
+    }
   }
 }
 
@@ -413,7 +416,7 @@ function reportSummary(results: CheckResult[]): void {
 /**
  * Report all check results. Returns the number of broken links.
  */
-export async function report(results: CheckResult[], octokit: Octokit): Promise<number> {
+export async function report(results: CheckResult[], octokit: Octokit, config: Config): Promise<number> {
   const broken = results.filter(r => !r.ok);
 
   if (context.payload.pull_request) {
@@ -440,7 +443,7 @@ export async function report(results: CheckResult[], octokit: Octokit): Promise<
       core.warning(`Failed to fetch PR file list: ${String(err)}`);
     }
 
-    await reportPR(results, octokit, diffLines, commitSha);
+    await reportPR(results, octokit, diffLines, commitSha, config);
   } else {
     reportSummary(results);
   }

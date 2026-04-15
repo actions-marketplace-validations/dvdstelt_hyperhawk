@@ -69,3 +69,14 @@ Learn about [.NET](https://en.wikipedia.org/wiki/.NET_Framework_(software)) on W
 ## External Links (verified when external checking is enabled)
 
 Thanks to [@dvdstelt](https://github.com/dvdstelt) for the contribution.
+
+## Links Inside Code Blocks (should be skipped when skip-code-blocks is enabled)
+
+```yaml
+- uses: dvdstelt/hyperhawk@v1
+  with:
+    token: ${{ secrets.GITHUB_TOKEN }}
+    files: '**/*.md,!docs/internal-only.md'
+```
+
+Here is some text with a [link after the code block](../READM.md) that should still be checked.

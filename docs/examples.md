@@ -44,6 +44,24 @@
     timeout: 15000
 ```
 
+## Skip links inside code blocks
+
+```yaml
+- uses: dvdstelt/hyperhawk@v1
+  with:
+    token: ${{ secrets.GITHUB_TOKEN }}
+    skip-code-blocks: true
+```
+
+## Only report issues on changed lines
+
+```yaml
+- uses: dvdstelt/hyperhawk@v1
+  with:
+    token: ${{ secrets.GITHUB_TOKEN }}
+    report-only-changed: true
+```
+
 ## Ignore specific domains and enable strict mode
 
 ```yaml

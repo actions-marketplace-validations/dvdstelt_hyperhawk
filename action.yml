@@ -35,6 +35,19 @@ inputs:
     description: Fail the workflow if broken links are found
     required: false
     default: 'false'
+  skip-code-blocks:
+    description: >
+      When true, links inside fenced code blocks (``` or ~~~) are skipped
+      and not checked.
+    required: false
+    default: 'false'
+  report-only-changed:
+    description: >
+      When true, only report issues on lines that were changed in the PR.
+      Broken links on unchanged lines are silently skipped instead of
+      producing check warning annotations.
+    required: false
+    default: 'false'
   cross-repo-token:
     description: >
       Optional separate token used only for same-org GitHub link checks.
