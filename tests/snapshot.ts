@@ -150,6 +150,7 @@ async function runIssueTemplateTest(repoRoot: string, testFile: string): Promise
     timeout: 5000,
     filePatterns: ['.github/ISSUE_TEMPLATE/bug_report.md'],
     concurrency: 1,
+    skipCodeBlocks: false,
     reportOnlyChanged: false,
   };
 
@@ -227,6 +228,7 @@ async function runTests(repoRoot: string, testFile: string, baseUrl: string): Pr
     timeout: 5000,
     filePatterns: ['tests/test-document.md'],
     concurrency: 1,
+    skipCodeBlocks: false,
     reportOnlyChanged: false,
   };
 

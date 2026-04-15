@@ -32,5 +32,6 @@ export interface Config {
   timeout: number;
   filePatterns: string[];
   concurrency: number;
+  skipCodeBlocks: boolean;
   reportOnlyChanged: boolean;
 }

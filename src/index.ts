@@ -81,6 +81,7 @@ async function run(): Promise<void> {
     const strictInput = core.getInput('strict');
     const strictEnv = process.env['LINK_CHECK_STRICT'];
     const strict = strictInput === 'true' || strictEnv === 'true';
+    const skipCodeBlocks = core.getInput('skip-code-blocks') === 'true';
     const reportOnlyChanged = core.getInput('report-only-changed') === 'true';
 
     const repoRoot = process.env['GITHUB_WORKSPACE'] || process.cwd();
@@ -104,6 +105,7 @@ async function run(): Promise<void> {
       timeout,
       filePatterns,
       concurrency,
+      skipCodeBlocks,
       reportOnlyChanged,
     };
 

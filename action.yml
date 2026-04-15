@@ -35,6 +35,12 @@ inputs:
     description: Fail the workflow if broken links are found
     required: false
     default: 'false'
+  skip-code-blocks:
+    description: >
+      When true, links inside fenced code blocks (``` or ~~~) are skipped
+      and not checked.
+    required: false
+    default: 'false'
   report-only-changed:
     description: >
       When true, only report issues on lines that were changed in the PR.

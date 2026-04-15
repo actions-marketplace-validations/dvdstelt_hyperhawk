@@ -86,12 +86,14 @@ export function extractLinks(filePath: string, config: Config): LinkInfo[] {
     const lineContent = lines[i];
     const lineNumber = i + 1;
 
-    // Toggle code block state on fenced code block markers (``` or ~~~)
-    if (/^(`{3,}|~{3,})/.test(lineContent.trimStart())) {
-      inCodeBlock = !inCodeBlock;
-      continue;
+    // When skip-code-blocks is enabled, skip links inside fenced code blocks
+    if (config.skipCodeBlocks) {
+      if (/^(`{3,}|~{3,})/.test(lineContent.trimStart())) {
+        inCodeBlock = !inCodeBlock;
+        continue;
+      }
+      if (inCodeBlock) continue;
     }
-    if (inCodeBlock) continue;
 
     // Skip reference definition lines themselves
     if (refDefRegex.test(lineContent)) continue;
