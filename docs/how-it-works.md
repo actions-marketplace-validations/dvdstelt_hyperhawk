@@ -19,6 +19,8 @@ HyperHawk supports one level of balanced parentheses inside markdown link URLs, 
 
 Percent-encoded characters in internal link paths (e.g. `%20` for spaces) are decoded before checking the filesystem.
 
+When `skip-code-blocks` is enabled, content inside fenced code blocks (`` ``` `` or `~~~`) is excluded from link extraction.
+
 ### External link handling
 
 External links are checked with browser-like headers to avoid bot-detection blocks. The following responses are treated as valid rather than broken:
@@ -45,6 +47,8 @@ Same-org links are verified through the GitHub REST API:
 ### Deduplication
 
 HyperHawk tracks which comments it has already posted using hidden HTML markers in the comment body, keyed on file path and URL. If a link shifts to a different line number between pushes (e.g. because lines were added above it), the existing comment is still recognised and a duplicate is not posted.
+
+Resolving a HyperHawk comment is permanent for that PR: the resolved comment is still tracked by the deduplication logic, so HyperHawk will not re-post it on subsequent pushes. If the underlying link is still broken, fix it or re-open the resolved comment manually.
 
 ## PR review behaviour
 
