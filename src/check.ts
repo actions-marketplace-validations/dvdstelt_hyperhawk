@@ -228,6 +228,13 @@ async function checkInternal(link: LinkInfo, config: Config): Promise<CheckResul
   const decodedPath = decodeURIComponent(urlWithoutAnchor);
 
   const isRootRelative = decodedPath.startsWith('/');
+
+  // Relative-link checking can be disabled entirely. Root-relative links
+  // (and anchors, handled above) are still verified.
+  if (!isRootRelative && !config.checkRelative) {
+    return { link, ok: true };
+  }
+
   const sourceDir = path.dirname(path.join(config.repoRoot, link.filePath));
 
   const resolvedPath = isRootRelative
@@ -241,9 +248,12 @@ async function checkInternal(link: LinkInfo, config: Config): Promise<CheckResul
     // However, skip the suggestion for same-folder links (e.g. "readme.md" or "./readme.md")
     // because they are simple and unlikely to break.
     if (!isRootRelative && !isIssueTemplate(link.filePath)) {
-      const normalized = urlWithoutAnchor.replace(/^\.\//, '');
-      const isSameFolder = !normalized.includes('/') && !normalized.includes('\\');
-      if (!isSameFolder) {
+      // Suggest a root-relative conversion only for links that traverse more
+      // directory levels than the configured depth. Closer links (at or below
+      // the threshold, e.g. same-folder by default) are left as-is because
+      // they are simple and unlikely to break.
+      const depth = relativeLinkDepth(urlWithoutAnchor);
+      if (depth > config.relativeSuggestionDepth) {
         const anchor = hashIdx >= 0 ? url.slice(hashIdx) : '';
         const rootRelUrl = toRootRelative(resolvedPath, config.repoRoot) + anchor;
         const suggestion = link.lineContent.trimEnd().replace(url, rootRelUrl);
@@ -334,6 +344,29 @@ async function looksPrivate(owner: string, repo: string): Promise<boolean> {
  */
 function isIssueTemplate(filePath: string): boolean {
   return filePath.startsWith('.github/ISSUE_TEMPLATE/');
+}
+
+/**
+ * Count how many directory levels a relative link traverses, ignoring the
+ * filename itself. Each '..' (up) or named directory segment (down) counts
+ * as one level; '.' and empty segments are ignored.
+ *
+ *   readme.md         -> 0  (same folder)
+ *   ./readme.md       -> 0
+ *   ../readme.md      -> 1
+ *   sub/readme.md     -> 1
+ *   ../../readme.md   -> 2
+ *   ../sub/readme.md  -> 2
+ */
+function relativeLinkDepth(relativePath: string): number {
+  const segments = relativePath.replace(/\\/g, '/').split('/');
+  segments.pop(); // drop the filename
+  let depth = 0;
+  for (const segment of segments) {
+    if (segment === '' || segment === '.') continue;
+    depth++;
+  }
+  return depth;
 }
 
 /**

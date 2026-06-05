@@ -50,3 +50,37 @@ extract:71 | https://github.com/dvdstelt
 .github/ISSUE_TEMPLATE/bug_report.md:13 | https://github.com/dvdstelt/hyperhawk/blob/main/README.md | suggestion
 .github/ISSUE_TEMPLATE/bug_report.md:15 | ../docs/configuration.md | broken -> /docs/configuration.md
 codeblock:tests/test-document.md:82 | ../READM.md
+reloff:11 | ../release.ps | ok
+reloff:13 | ../tsconfig.jso | ok
+reloff:15 | ../action.ym | ok
+reloff:19 | ../READM.md#troubleshooting | ok
+reloff:23 | ../docs/setup-guide.md | ok
+reloff:25 | ../../faq/common-issues.md | ok
+reloff:27 | ../CONTRIBUTING.md | ok
+reloff:31 | ../LICENS.md | ok
+reloff:31 | ../READM.md | ok
+reloff:35 | ./configuration.md | ok
+reloff:37 | ./placeholder.md | ok
+reloff:41 | ../AGENTS.md | ok
+reloff:43 | ../action.yml | ok
+reloff:47 | ./file%20with%20spaces.md | ok
+reloff:7 | ../READM.md | ok
+reloff:82 | ../READM.md | ok
+reloff:9 | ../LICENS.md | ok
+reldepth1:11 | ../release.ps | broken
+reldepth1:13 | ../tsconfig.jso | broken
+reldepth1:15 | ../action.ym | broken
+reldepth1:19 | ../READM.md#troubleshooting | broken
+reldepth1:23 | ../docs/setup-guide.md | broken
+reldepth1:25 | ../../faq/common-issues.md | broken
+reldepth1:27 | ../CONTRIBUTING.md | broken
+reldepth1:31 | ../LICENS.md | broken
+reldepth1:31 | ../READM.md | broken
+reldepth1:35 | ./configuration.md | broken
+reldepth1:37 | ./placeholder.md | ok
+reldepth1:41 | ../AGENTS.md | ok
+reldepth1:43 | ../action.yml | ok
+reldepth1:47 | ./file%20with%20spaces.md | ok
+reldepth1:7 | ../READM.md | broken
+reldepth1:82 | ../READM.md | broken
+reldepth1:9 | ../LICENS.md | broken

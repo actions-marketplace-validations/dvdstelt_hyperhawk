@@ -77,6 +77,8 @@ Need to check links into **private repositories** in the same org? See [Cross-re
 | `files` | no | `**/*.md,**/*.mdx` | Comma-separated glob patterns for files to scan. |
 | `check-external` | no | `true` | Whether to check external HTTP/HTTPS links. |
 | `check-same-org` | no | `true` | Whether to verify same-org GitHub links via the API. |
+| `check-relative` | no | `true` | Whether to check relative file links (`../x.md`, `./x.md`, `folder/x.md`). Root-relative (`/x.md`) links are always checked. |
+| `relative-suggestion-depth` | no | `0` | Skip root-relative conversion suggestions for relative links within this many directory levels (`0` = only same-folder; `1` also exempts `../x.md` and `folder/x.md`). Max `5`; disable `check-relative` for deeper. |
 | `ignore-patterns` | no | _(empty)_ | Comma-separated regex patterns. Matching URLs are skipped. |
 | `timeout` | no | `10000` | Timeout in milliseconds for each external link request. |
 | `concurrency` | no | `5` | Number of links checked in parallel. |

@@ -146,6 +146,8 @@ async function runIssueTemplateTest(repoRoot: string, testFile: string): Promise
     strict: false,
     checkExternal: false,
     checkSameOrg: true,
+    checkRelative: true,
+    relativeSuggestionDepth: 0,
     ignorePatterns: [],
     timeout: 5000,
     filePatterns: ['.github/ISSUE_TEMPLATE/bug_report.md'],
@@ -194,6 +196,8 @@ async function runCodeBlockTest(repoRoot: string, testFile: string): Promise<voi
     strict: false,
     checkExternal: false,
     checkSameOrg: false,
+    checkRelative: true,
+    relativeSuggestionDepth: 0,
     ignorePatterns: [],
     timeout: 5000,
     filePatterns: ['tests/test-document.md'],
@@ -216,6 +220,51 @@ async function runCodeBlockTest(repoRoot: string, testFile: string): Promise<voi
   process.stdout.write(lines.join('\n') + '\n');
 }
 
+/**
+ * Verify the relative-link controls:
+ *  - check-relative: false skips relative links entirely (all reported ok)
+ *  - relative-suggestion-depth raises the threshold below which valid
+ *    relative links are not given a root-relative conversion suggestion
+ *    (depth 1 exempts one-level links like ../AGENTS.md and ../action.yml)
+ */
+async function runRelativeControlsTest(repoRoot: string, testFile: string): Promise<void> {
+  const base: Config = {
+    token: '',
+    repoRoot,
+    owner: 'dvdstelt',
+    repo: 'hyperhawk',
+    strict: false,
+    checkExternal: false,
+    checkSameOrg: false,
+    checkRelative: true,
+    relativeSuggestionDepth: 0,
+    ignorePatterns: [],
+    timeout: 5000,
+    filePatterns: ['tests/test-document.md'],
+    concurrency: 1,
+    skipCodeBlocks: false,
+    reportOnlyChanged: false,
+  };
+
+  const internalLinks = extractLinks(testFile, base).filter(l => l.type === 'internal');
+
+  const summarize = async (prefix: string, config: Config): Promise<void> => {
+    const results = await checkLinks(internalLinks, config, null as any);
+    const lines = results
+      .map(r => {
+        const status = r.ok ? (r.suggestionOnly ? 'suggestion' : 'ok') : 'broken';
+        return `${prefix}:${r.link.line} | ${r.link.url} | ${status}`;
+      })
+      .sort();
+    process.stdout.write(lines.join('\n') + '\n');
+  };
+
+  // Relative checking disabled: every relative link is skipped (ok).
+  await summarize('reloff', { ...base, checkRelative: false });
+  // Depth 1: same-folder and one-level links are exempt from suggestions.
+  await summarize('reldepth1', { ...base, relativeSuggestionDepth: 1 });
+}
+
 async function main(): Promise<void> {
   const repoRoot = path.resolve(__dirname, '..');
   const testFile = path.join(repoRoot, 'tests', 'test-document.md');
@@ -227,6 +276,7 @@ async function main(): Promise<void> {
     await runTests(repoRoot, testFile, baseUrl);
     await runIssueTemplateTest(repoRoot, issueTemplateFile);
     await runCodeBlockTest(repoRoot, testFile);
+    await runRelativeControlsTest(repoRoot, testFile);
   } finally {
     await closeServer();
   }
@@ -261,6 +311,8 @@ async function runTests(repoRoot: string, testFile: string, baseUrl: string): Pr
     strict: false,
     checkExternal: true,
     checkSameOrg: true,
+    checkRelative: true,
+    relativeSuggestionDepth: 0,
     ignorePatterns: [],
     timeout: 5000,
     filePatterns: ['tests/test-document.md'],
