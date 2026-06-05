@@ -98,7 +98,7 @@ function formatBrokenComment(result: CheckResult): string {
     const status = statusCode ? `HTTP ${statusCode}` : 'an error';
     lines.push(
       `The external link returns ${status}. Verify the URL is still valid or remove the link.`,
-      `URL: \`${link.url}\``
+      `URL: <${link.url}>`
     );
   }
 
