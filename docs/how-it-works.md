@@ -13,6 +13,8 @@ Each unique URL is checked only once per run, regardless of how many files refer
 
 Links that are not verifiable (such as `mailto:` links and URLs with invalid hostnames) are silently skipped.
 
+Internal links split into two kinds: **relative** (`../x.md`, `./x.md`, `folder/x.md`) and **root-relative** (`/x.md`). External and same-org checks can be turned off with `check-external` and `check-same-org`; relative checks can be turned off with `check-relative` (root-relative links are always checked). See [Relative link checking](/docs/configuration.md#relative-link-checking).
+
 ### URL parsing
 
 HyperHawk supports one level of balanced parentheses inside markdown link URLs, so links like `[topic](https://en.wikipedia.org/wiki/Topic_(DJ))` are extracted correctly.
@@ -63,6 +65,8 @@ When a broken internal link can be located elsewhere in the repo, HyperHawk sugg
 ### Root-relative path suggestions
 
 Working links that use relative paths (`../../docs/guide.md`) get a suggestion to convert them to root-relative paths (`/docs/guide.md`). Root-relative links never break when the file containing them is moved. Same-folder links (e.g. `readme.md` or `./readme.md`) are left as-is since they are simple and unlikely to break.
+
+How close counts as "leave it alone" is configurable via [`relative-suggestion-depth`](/docs/configuration.md#tuning-conversion-suggestion-depth): links that traverse no more than the configured number of directory levels are exempt from this suggestion. Relative-link checking can also be turned off entirely with `check-relative: false`. Neither setting affects broken-link detection: a relative link to a missing file is always reported.
 
 ### Self-repo URL suggestions
 

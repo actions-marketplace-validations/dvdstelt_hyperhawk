@@ -19,6 +19,20 @@ inputs:
     description: Whether to check same-org GitHub links via API
     required: false
     default: 'true'
+  check-relative:
+    description: >
+      Whether to check relative file links (../x.md, ./x.md, folder/x.md).
+      Root-relative links (/x.md) are always checked.
+    required: false
+    default: 'true'
+  relative-suggestion-depth:
+    description: >
+      Relative links that traverse this many directory levels or fewer are not
+      given a root-relative conversion suggestion (0 = only same-folder links
+      are exempt; 1 also exempts ../x.md and folder/x.md). Maximum 5; to skip
+      relative-link checks entirely, set check-relative to false instead.
+    required: false
+    default: '0'
   ignore-patterns:
     description: Comma-separated list of URL patterns to ignore (regex)
     required: false

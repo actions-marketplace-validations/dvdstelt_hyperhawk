@@ -74,6 +74,8 @@ async function run(): Promise<void> {
     const filesInput = core.getInput('files') || '**/*.md,**/*.mdx';
     const checkExternal = core.getInput('check-external') !== 'false';
     const checkSameOrg = core.getInput('check-same-org') !== 'false';
+    const checkRelative = core.getInput('check-relative') !== 'false';
+    const relativeSuggestionDepth = parseRelativeSuggestionDepth(core.getInput('relative-suggestion-depth'));
     const ignorePatternsInput = core.getInput('ignore-patterns');
     const timeout = parseInt(core.getInput('timeout') || '10000', 10);
     const concurrency = parseInt(core.getInput('concurrency') || '5', 10);
@@ -101,6 +103,8 @@ async function run(): Promise<void> {
       strict,
       checkExternal,
       checkSameOrg,
+      checkRelative,
+      relativeSuggestionDepth,
       ignorePatterns,
       timeout,
       filePatterns,
@@ -178,6 +182,32 @@ async function run(): Promise<void> {
   } catch (err) {
     core.setFailed(`HyperHawk encountered an unexpected error: ${String(err)}`);
   }
+}
+
+// Relative links deeper than this should be disabled outright via
+// check-relative rather than exempted from suggestions one level at a time.
+const MAX_RELATIVE_SUGGESTION_DEPTH = 5;
+
+/**
+ * Parse and validate the relative-suggestion-depth input. Falls back to 0
+ * (only same-folder links exempt) for empty/invalid values, and clamps to
+ * MAX_RELATIVE_SUGGESTION_DEPTH with a warning when set too high.
+ */
+function parseRelativeSuggestionDepth(raw: string): number {
+  if (!raw) return 0;
+  const value = parseInt(raw, 10);
+  if (Number.isNaN(value) || value < 0) {
+    core.warning(`Invalid relative-suggestion-depth "${raw}"; falling back to 0.`);
+    return 0;
+  }
+  if (value > MAX_RELATIVE_SUGGESTION_DEPTH) {
+    core.warning(
+      `relative-suggestion-depth ${value} exceeds the maximum of ${MAX_RELATIVE_SUGGESTION_DEPTH}; ` +
+      `clamping to ${MAX_RELATIVE_SUGGESTION_DEPTH}. To skip relative-link checks entirely, set check-relative: false.`
+    );
+    return MAX_RELATIVE_SUGGESTION_DEPTH;
+  }
+  return value;
 }
 
 async function globFiles(patterns: string[], repoRoot: string): Promise<string[]> {
