@@ -676,8 +676,13 @@ async function checkExternal(link: LinkInfo, config: Config): Promise<CheckResul
   try {
     let result = await followRedirects(link.url, 'HEAD', timeout, BROWSER_HEADERS);
 
-    // HEAD returned Method Not Allowed; retry with GET
-    if (result.status === 405) {
+    // Plenty of hosts mishandle HEAD: some answer 405 Method Not Allowed, others
+    // return an outright error for a page they serve fine on GET (support.google.com
+    // answers 404 to HEAD but 200 to GET). Retry every failing HEAD with GET so the
+    // verdict matches what a reader actually gets. Only failures pay the extra
+    // request, and followRedirects discards the body as soon as headers arrive.
+    if (result.status >= 400) {
+      core.debug(`[external] ${link.url} returned HTTP ${result.status} for HEAD - retrying with GET`);
       result = await followRedirects(link.url, 'GET', timeout, BROWSER_HEADERS);
     }
 
