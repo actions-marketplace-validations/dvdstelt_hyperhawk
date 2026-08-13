@@ -14,6 +14,7 @@
 ::debug::[external] <server>/not-found returned HTTP 404 for HEAD - retrying with GET
 ::debug::[external] <server>/head-404-get-200 returned HTTP 404 for HEAD - retrying with GET
 ::debug::[external] <server>/head-404-get-redirect returned HTTP 404 for HEAD - retrying with GET
+::debug::[external] <server>/tracking-only redirected only to add tracking parameters - skipping suggestion
 ::debug::[external] https://github.com/user-attachments/assets/35163316-65df-4f8d-bf85-03650025a7b4 is a GitHub user-attachment asset, treating as valid
 tests/test-document.md:1001 | <server>/redirect-301 | suggestion -> <server>/final
 tests/test-document.md:1002 | <server>/redirect-302 | suggestion -> <server>/final
@@ -28,6 +29,10 @@ tests/test-document.md:1010 | <server>/not-found | broken | HTTP 404
 tests/test-document.md:1011 | https://github.com/user-attachments/assets/35163316-65df-4f8d-bf85-03650025a7b4 | ok
 tests/test-document.md:1012 | <server>/head-404-get-200 | ok
 tests/test-document.md:1013 | <server>/head-404-get-redirect | suggestion -> <server>/final
+tests/test-document.md:1014 | <server>/tracked-move | suggestion -> <server>/final
+tests/test-document.md:1015 | <server>/tracking-only | ok
+tests/test-document.md:1016 | <server>/keeps-author-param?utm_source=author | suggestion -> <server>/final?utm_source=author
+tests/test-document.md:1017 | <server>/tracked-move#my-anchor | suggestion -> <server>/final#my-anchor
 tests/test-document.md:11 | ../release.ps | broken | File not found: <root>/release.ps
 tests/test-document.md:13 | ../tsconfig.jso | broken | File not found: <root>/tsconfig.jso
 tests/test-document.md:15 | ../action.ym | broken | File not found: <root>/action.ym

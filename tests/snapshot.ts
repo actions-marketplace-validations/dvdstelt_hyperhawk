@@ -32,7 +32,7 @@ function startRedirectServer(): Promise<{ baseUrl: string; close: () => Promise<
       } else if (url === '/redirect-301-step2') {
         res.writeHead(301, { Location: '/final' });
         res.end();
-      } else if (url === '/final') {
+      } else if (url === '/final' || url.startsWith('/final?')) {
         res.writeHead(200);
         res.end('OK');
 
@@ -77,6 +77,27 @@ function startRedirectServer(): Promise<{ baseUrl: string; close: () => Promise<
       } else if (url === '/cross-domain-redirect') {
         const addr = server.address() as { port: number };
         res.writeHead(302, { Location: `http://localhost:${addr.port}/final` });
+        res.end();
+
+      // Redirect that moves the page AND appends tracking params: the suggestion
+      // should point at the new path with the tracking params stripped
+      } else if (url.startsWith('/tracked-move')) {
+        res.writeHead(301, { Location: '/final?visit_id=639222257369492970-241975759&rd=2&utm_source=redirect' });
+        res.end();
+
+      // Redirect that only appends tracking params to the same path: once they
+      // are stripped there is nothing left to suggest
+      } else if (url === '/tracking-only') {
+        res.writeHead(301, { Location: '/tracking-only?visit_id=abc123&rd=1' });
+        res.end();
+      } else if (url.startsWith('/tracking-only?')) {
+        res.writeHead(200);
+        res.end('OK');
+
+      // Redirect that keeps a param the author already had, alongside a new
+      // tracking param: the author's param must survive
+      } else if (url.startsWith('/keeps-author-param')) {
+        res.writeHead(301, { Location: '/final?utm_source=author&visit_id=xyz789' });
         res.end();
 
       // Errors on HEAD but serves the page on GET (support.google.com behaviour)
@@ -142,6 +163,10 @@ function buildExternalLinks(baseUrl: string, testFile: string): LinkInfo[] {
     { url: `${baseUrl}/not-found`, text: 'plain 404', line: 1010, lineContent: `[plain 404](${baseUrl}/not-found)` },
     { url: `${baseUrl}/head-404-get-200`, text: 'head 404 get 200', line: 1012, lineContent: `[head 404 get 200](${baseUrl}/head-404-get-200)` },
     { url: `${baseUrl}/head-404-get-redirect`, text: 'head 404 get redirect', line: 1013, lineContent: `[head 404 get redirect](${baseUrl}/head-404-get-redirect)` },
+    { url: `${baseUrl}/tracked-move`, text: 'tracked move', line: 1014, lineContent: `[tracked move](${baseUrl}/tracked-move)` },
+    { url: `${baseUrl}/tracking-only`, text: 'tracking only', line: 1015, lineContent: `[tracking only](${baseUrl}/tracking-only)` },
+    { url: `${baseUrl}/keeps-author-param?utm_source=author`, text: 'keeps author param', line: 1016, lineContent: `[keeps author param](${baseUrl}/keeps-author-param?utm_source=author)` },
+    { url: `${baseUrl}/tracked-move#my-anchor`, text: 'tracked move with fragment', line: 1017, lineContent: `[tracked move with fragment](${baseUrl}/tracked-move#my-anchor)` },
     { url: 'https://github.com/user-attachments/assets/35163316-65df-4f8d-bf85-03650025a7b4', text: 'user attachment', line: 1011, lineContent: '[user attachment](https://github.com/user-attachments/assets/35163316-65df-4f8d-bf85-03650025a7b4)' },
   ];
 
