@@ -4,7 +4,7 @@
 Ensure the workflow has `pull-requests: write` permission and that the `token` input is set (it defaults to `GITHUB_TOKEN` which should work in most cases).
 
 **External links are timing out.**
-Increase the `timeout` input (value is in milliseconds). The default is `10000` (10 seconds). Some sites are slow to respond to HEAD requests; HyperHawk falls back to GET automatically when HEAD returns 405.
+Increase the `timeout` input (value is in milliseconds). The default is `10000` (10 seconds). Some sites are slow to respond to HEAD requests; HyperHawk falls back to GET automatically whenever HEAD returns an error status, so a host that mishandles HEAD (for example `support.google.com`, which answers 404 to HEAD but serves the page on GET) is not reported as broken.
 
 **A link is reported as broken but it works in my browser.**
 Some sites block requests from CI runners or require cookies. Add the domain to `ignore-patterns` to skip it.

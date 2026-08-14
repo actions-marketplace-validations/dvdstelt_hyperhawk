@@ -79,6 +79,27 @@ function startRedirectServer(): Promise<{ baseUrl: string; close: () => Promise<
         res.writeHead(302, { Location: `http://localhost:${addr.port}/final` });
         res.end();
 
+      // Errors on HEAD but serves the page on GET (support.google.com behaviour)
+      } else if (url === '/head-404-get-200') {
+        if (req.method === 'HEAD') {
+          res.writeHead(404);
+          res.end();
+        } else {
+          res.writeHead(200);
+          res.end('OK');
+        }
+
+      // Errors on HEAD but redirects on GET: the GET retry must still yield a
+      // redirect suggestion rather than a broken-link report
+      } else if (url === '/head-404-get-redirect') {
+        if (req.method === 'HEAD') {
+          res.writeHead(404);
+          res.end();
+        } else {
+          res.writeHead(301, { Location: '/final' });
+          res.end();
+        }
+
       // 404 (broken link)
       } else {
         res.writeHead(404);
@@ -119,6 +140,8 @@ function buildExternalLinks(baseUrl: string, testFile: string): LinkInfo[] {
     { url: `${baseUrl}/auth-required`, text: 'auth required', line: 1008, lineContent: `[auth required](${baseUrl}/auth-required)` },
     { url: `${baseUrl}/cross-domain-redirect`, text: 'cross-domain redirect', line: 1009, lineContent: `[cross-domain redirect](${baseUrl}/cross-domain-redirect)` },
     { url: `${baseUrl}/not-found`, text: 'plain 404', line: 1010, lineContent: `[plain 404](${baseUrl}/not-found)` },
+    { url: `${baseUrl}/head-404-get-200`, text: 'head 404 get 200', line: 1012, lineContent: `[head 404 get 200](${baseUrl}/head-404-get-200)` },
+    { url: `${baseUrl}/head-404-get-redirect`, text: 'head 404 get redirect', line: 1013, lineContent: `[head 404 get redirect](${baseUrl}/head-404-get-redirect)` },
     { url: 'https://github.com/user-attachments/assets/35163316-65df-4f8d-bf85-03650025a7b4', text: 'user attachment', line: 1011, lineContent: '[user attachment](https://github.com/user-attachments/assets/35163316-65df-4f8d-bf85-03650025a7b4)' },
   ];
 

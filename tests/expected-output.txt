@@ -6,9 +6,14 @@
 ::debug::[same-org] URL points to current repo, suggesting local path: https://github.com/dvdstelt/hyperhawk/blob/main/does-not-exist.md
 ::debug::[same-org] Checking https://github.com/dvdstelt/hyperhawk/blob/main/docs/configuraton.md
 ::debug::[same-org] URL points to current repo, suggesting local path: https://github.com/dvdstelt/hyperhawk/blob/main/docs/configuraton.md
+::debug::[external] <server>/redirect-to-403 returned HTTP 403 for HEAD - retrying with GET
 ::debug::[external] <server>/redirect-to-403 returned HTTP 403 - treating as auth/bot-blocked, skipping
+::debug::[external] <server>/auth-required returned HTTP 401 for HEAD - retrying with GET
 ::debug::[external] <server>/auth-required returned HTTP 401 - treating as auth/bot-blocked, skipping
 ::debug::[external] <server>/cross-domain-redirect redirected to different host <server-alt>/final - skipping suggestion
+::debug::[external] <server>/not-found returned HTTP 404 for HEAD - retrying with GET
+::debug::[external] <server>/head-404-get-200 returned HTTP 404 for HEAD - retrying with GET
+::debug::[external] <server>/head-404-get-redirect returned HTTP 404 for HEAD - retrying with GET
 ::debug::[external] https://github.com/user-attachments/assets/35163316-65df-4f8d-bf85-03650025a7b4 is a GitHub user-attachment asset, treating as valid
 tests/test-document.md:1001 | <server>/redirect-301 | suggestion -> <server>/final
 tests/test-document.md:1002 | <server>/redirect-302 | suggestion -> <server>/final
@@ -21,6 +26,8 @@ tests/test-document.md:1008 | <server>/auth-required | ok
 tests/test-document.md:1009 | <server>/cross-domain-redirect | ok
 tests/test-document.md:1010 | <server>/not-found | broken | HTTP 404
 tests/test-document.md:1011 | https://github.com/user-attachments/assets/35163316-65df-4f8d-bf85-03650025a7b4 | ok
+tests/test-document.md:1012 | <server>/head-404-get-200 | ok
+tests/test-document.md:1013 | <server>/head-404-get-redirect | suggestion -> <server>/final
 tests/test-document.md:11 | ../release.ps | broken | File not found: <root>/release.ps
 tests/test-document.md:13 | ../tsconfig.jso | broken | File not found: <root>/tsconfig.jso
 tests/test-document.md:15 | ../action.ym | broken | File not found: <root>/action.ym
