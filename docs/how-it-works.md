@@ -32,6 +32,8 @@ External links are checked with browser-like headers to avoid bot-detection bloc
 
 When an external link redirects, HyperHawk follows the redirect chain and suggests updating to the final destination URL, but only when the redirect stays on the same hostname. Cross-domain redirects (typically auth/login flows) are not suggested as corrections.
 
+Tracking parameters that the redirect adds (`visit_id`, `rd`, `utm_*`, ad click ids, and similar) are stripped from the suggestion, because they identify the visit rather than the content and go stale as soon as they are committed. A parameter that was already on your link is kept. If stripping leaves the destination identical to the original link, no suggestion is made at all.
+
 ### GitHub user-attachment assets
 
 URLs matching `https://github.com/user-attachments/assets/...` are treated as always valid without making an HTTP request. These are image and file uploads attached to issues, PRs, and discussions. They cannot be deleted without GitHub admin intervention and are effectively permanent, so verifying them would add complexity for no benefit.
@@ -74,7 +76,7 @@ Full GitHub URLs that point back to the current repository (e.g. `https://github
 
 ### Redirect suggestions
 
-External links that redirect to a different URL on the same host get a suggestion to update to the final destination. Fragment identifiers (`#section`) from the original URL are preserved when the redirect target does not include one.
+External links that redirect to a different URL on the same host get a suggestion to update to the final destination, with any tracking parameters the redirect added stripped out. Fragment identifiers (`#section`) from the original URL are preserved when the redirect target does not include one.
 
 ## Permissions
 

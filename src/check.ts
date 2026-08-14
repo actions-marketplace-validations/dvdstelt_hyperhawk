@@ -614,18 +614,79 @@ async function checkSameOrg(link: LinkInfo, octokit: Octokit, config: Config): P
 }
 
 /**
+ * Query parameters a server attaches to identify the visit rather than the
+ * content. support.google.com, for example, redirects to a URL carrying a
+ * `visit_id` session token that is stale the moment it is written down.
+ * Committing one of these into a markdown file is never what the author wants,
+ * so they are dropped from redirect suggestions. Anything prefixed `utm_` is
+ * treated the same way.
+ */
+const TRACKING_PARAMS = new Set([
+  'visit_id',                             // support.google.com session token
+  'rd',                                   // support.google.com redirect counter
+  'sjid',                                 // Google session join id
+  'gclid', 'dclid', 'fbclid', 'msclkid',  // ad platform click ids
+  'mc_cid', 'mc_eid',                     // Mailchimp campaign and email ids
+  '_ga', '_gl',                           // Google Analytics cross-domain linker
+]);
+
+function isTrackingParam(name: string): boolean {
+  return TRACKING_PARAMS.has(name) || name.startsWith('utm_');
+}
+
+/**
+ * Drop tracking parameters that the redirect introduced. A parameter already
+ * present on the original link is left alone: the author put it there
+ * deliberately, and this strips server noise, it does not rewrite intent.
+ */
+function stripTrackingParams(finalUrl: string, originalUrl: string): string {
+  let parsed: URL;
+  let original: URL;
+  try {
+    parsed = new URL(finalUrl);
+    original = new URL(originalUrl);
+  } catch {
+    return finalUrl;
+  }
+
+  const drop = [...parsed.searchParams.keys()].filter(
+    name => isTrackingParam(name) && !original.searchParams.has(name)
+  );
+  if (drop.length === 0) return finalUrl;
+
+  for (const name of drop) {
+    parsed.searchParams.delete(name);
+  }
+  return parsed.toString();
+}
+
+/**
+ * Returns true if two URLs are the same once parsed, so that a redirect which
+ * only added tracking noise is not mistaken for a content move.
+ */
+function isSameUrl(urlA: string, urlB: string): boolean {
+  if (urlA === urlB) return true;
+  try {
+    return new URL(urlA).toString() === new URL(urlB).toString();
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Build the final redirect URL, re-attaching the fragment from the original URL
  * when the redirect target does not include one (servers typically strip
  * fragments from Location headers).
  */
 function buildRedirectUrl(originalUrl: string, finalUrl: string): string {
+  const cleanedUrl = stripTrackingParams(finalUrl, originalUrl);
   const originalHash = originalUrl.indexOf('#') >= 0 ? originalUrl.slice(originalUrl.indexOf('#')) : '';
-  if (!originalHash) return finalUrl;
+  if (!originalHash) return cleanedUrl;
 
   // If the final URL already has a fragment, keep it as-is
-  if (finalUrl.indexOf('#') >= 0) return finalUrl;
+  if (cleanedUrl.indexOf('#') >= 0) return cleanedUrl;
 
-  return finalUrl + originalHash;
+  return cleanedUrl + originalHash;
 }
 
 /**
@@ -702,6 +763,13 @@ async function checkExternal(link: LinkInfo, config: Config): Promise<CheckResul
       // Cross-domain redirects are typically auth/login flows, not content moves.
       if (isSameHost(link.url, result.finalUrl)) {
         const correctedUrl = buildRedirectUrl(link.url, result.finalUrl);
+        // The redirect only added tracking noise, so there is nothing to fix.
+        if (isSameUrl(correctedUrl, link.url)) {
+          core.debug(`[external] ${link.url} redirected only to add tracking parameters - skipping suggestion`);
+          const r = { ok: true, statusCode: result.status };
+          resultCache.set(link.url, r);
+          return { link, ...r };
+        }
         const suggestion = link.lineContent.trimEnd().replace(link.url, () => correctedUrl);
         const r = { ok: true, statusCode: result.status, correctedUrl, suggestionOnly: true };
         resultCache.set(link.url, r);
