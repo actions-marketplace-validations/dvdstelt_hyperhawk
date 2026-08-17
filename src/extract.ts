@@ -72,14 +72,28 @@ export function extractLinks(filePath: string, config: Config): LinkInfo[] {
   }
 
   // Regex patterns
-  const inlineRegex = /!?\[([^\]]*)\]\(([^)]+)\)/g;
+  // Inline links: supports one level of balanced parentheses inside the URL
+  // so that URLs like https://en.wikipedia.org/wiki/Topic_(details) are
+  // captured in full instead of being truncated at the first ')'.
+  const inlineRegex = /!?\[([^\]]*)\]\(((?:[^()\s]|\([^()]*\))+(?:\s+"[^"]*")?)\)/g;
   const refLinkRegex = /!?\[([^\]]+)\]\[([^\]]*)\]/g;
   const htmlHrefRegex = /(?:href|src)="([^"]+)"/g;
   const autolinkRegex = /<(https?:\/\/[^>]+)>/g;
 
+  let inCodeBlock = false;
+
   for (let i = 0; i < lines.length; i++) {
     const lineContent = lines[i];
     const lineNumber = i + 1;
+
+    // When skip-code-blocks is enabled, skip links inside fenced code blocks
+    if (config.skipCodeBlocks) {
+      if (/^(`{3,}|~{3,})/.test(lineContent.trimStart())) {
+        inCodeBlock = !inCodeBlock;
+        continue;
+      }
+      if (inCodeBlock) continue;
+    }
 
     // Skip reference definition lines themselves
     if (refDefRegex.test(lineContent)) continue;

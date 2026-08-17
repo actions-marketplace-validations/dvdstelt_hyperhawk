@@ -25,6 +25,14 @@
     token: ${{ secrets.GITHUB_TOKEN }}
     files: 'docs/**/*.md'
 ```
+## Scan all files except one specific file
+
+```yaml
+- uses: dvdstelt/hyperhawk@v1
+  with:
+    token: ${{ secrets.GITHUB_TOKEN }}
+    files: '**/*.md,!process/dont-scan-this-one.md'
+```
 
 ## High-concurrency scan for large repos
 
@@ -34,6 +42,24 @@
     token: ${{ secrets.GITHUB_TOKEN }}
     concurrency: 20
     timeout: 15000
+```
+
+## Skip links inside code blocks
+
+```yaml
+- uses: dvdstelt/hyperhawk@v1
+  with:
+    token: ${{ secrets.GITHUB_TOKEN }}
+    skip-code-blocks: true
+```
+
+## Only report issues on changed lines
+
+```yaml
+- uses: dvdstelt/hyperhawk@v1
+  with:
+    token: ${{ secrets.GITHUB_TOKEN }}
+    report-only-changed: true
 ```
 
 ## Ignore specific domains and enable strict mode

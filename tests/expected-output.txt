@@ -6,9 +6,16 @@
 ::debug::[same-org] URL points to current repo, suggesting local path: https://github.com/dvdstelt/hyperhawk/blob/main/does-not-exist.md
 ::debug::[same-org] Checking https://github.com/dvdstelt/hyperhawk/blob/main/docs/configuraton.md
 ::debug::[same-org] URL points to current repo, suggesting local path: https://github.com/dvdstelt/hyperhawk/blob/main/docs/configuraton.md
+::debug::[external] <server>/redirect-to-403 returned HTTP 403 for HEAD - retrying with GET
 ::debug::[external] <server>/redirect-to-403 returned HTTP 403 - treating as auth/bot-blocked, skipping
+::debug::[external] <server>/auth-required returned HTTP 401 for HEAD - retrying with GET
 ::debug::[external] <server>/auth-required returned HTTP 401 - treating as auth/bot-blocked, skipping
 ::debug::[external] <server>/cross-domain-redirect redirected to different host <server-alt>/final - skipping suggestion
+::debug::[external] <server>/not-found returned HTTP 404 for HEAD - retrying with GET
+::debug::[external] <server>/head-404-get-200 returned HTTP 404 for HEAD - retrying with GET
+::debug::[external] <server>/head-404-get-redirect returned HTTP 404 for HEAD - retrying with GET
+::debug::[external] <server>/tracking-only redirected only to add tracking parameters - skipping suggestion
+::debug::[external] https://github.com/user-attachments/assets/35163316-65df-4f8d-bf85-03650025a7b4 is a GitHub user-attachment asset, treating as valid
 tests/test-document.md:1001 | <server>/redirect-301 | suggestion -> <server>/final
 tests/test-document.md:1002 | <server>/redirect-302 | suggestion -> <server>/final
 tests/test-document.md:1003 | <server>/no-redirect | ok
@@ -19,6 +26,13 @@ tests/test-document.md:1007 | <server>/redirect-to-403 | ok
 tests/test-document.md:1008 | <server>/auth-required | ok
 tests/test-document.md:1009 | <server>/cross-domain-redirect | ok
 tests/test-document.md:1010 | <server>/not-found | broken | HTTP 404
+tests/test-document.md:1011 | https://github.com/user-attachments/assets/35163316-65df-4f8d-bf85-03650025a7b4 | ok
+tests/test-document.md:1012 | <server>/head-404-get-200 | ok
+tests/test-document.md:1013 | <server>/head-404-get-redirect | suggestion -> <server>/final
+tests/test-document.md:1014 | <server>/tracked-move | suggestion -> <server>/final
+tests/test-document.md:1015 | <server>/tracking-only | ok
+tests/test-document.md:1016 | <server>/keeps-author-param?utm_source=author | suggestion -> <server>/final?utm_source=author
+tests/test-document.md:1017 | <server>/tracked-move#my-anchor | suggestion -> <server>/final#my-anchor
 tests/test-document.md:11 | ../release.ps | broken | File not found: <root>/release.ps
 tests/test-document.md:13 | ../tsconfig.jso | broken | File not found: <root>/tsconfig.jso
 tests/test-document.md:15 | ../action.ym | broken | File not found: <root>/action.ym
@@ -32,10 +46,53 @@ tests/test-document.md:35 | ./configuration.md | broken -> /docs/configuration.m
 tests/test-document.md:37 | ./placeholder.md | ok
 tests/test-document.md:41 | ../AGENTS.md | suggestion
 tests/test-document.md:43 | ../action.yml | suggestion
-tests/test-document.md:53 | https://github.com/dvdstelt/hyperhawk/blob/main/README.md | suggestion -> /README.md
-tests/test-document.md:55 | https://github.com/dvdstelt/hyperhawk/blob/main/tests/test-document.md | suggestion -> test-document.md
-tests/test-document.md:57 | https://github.com/dvdstelt/hyperhawk/blob/main/does-not-exist.md | broken -> /does-not-exist.md
-tests/test-document.md:59 | https://github.com/dvdstelt/hyperhawk/blob/main/docs/configuraton.md | broken -> /docs/configuration.md (fuzzy)
+tests/test-document.md:47 | ./file%20with%20spaces.md | ok
+tests/test-document.md:57 | https://github.com/dvdstelt/hyperhawk/blob/main/README.md | suggestion -> /README.md
+tests/test-document.md:59 | https://github.com/dvdstelt/hyperhawk/blob/main/tests/test-document.md | suggestion -> test-document.md
+tests/test-document.md:61 | https://github.com/dvdstelt/hyperhawk/blob/main/does-not-exist.md | broken -> /does-not-exist.md
+tests/test-document.md:63 | https://github.com/dvdstelt/hyperhawk/blob/main/docs/configuraton.md | broken -> /docs/configuration.md (fuzzy)
 tests/test-document.md:7 | ../READM.md | broken -> /README.md (fuzzy)
+tests/test-document.md:82 | ../READM.md | broken -> /README.md (fuzzy)
 tests/test-document.md:9 | ../LICENS.md | broken | File not found: <root>/LICENS.md
 merge:tests/test-document.md:31 | ../READM.md + ../LICENS.md | Read the [README](/README.md) and the [license](../LICENS.md) before starting.
+extract:67 | https://en.wikipedia.org/wiki/.NET_Framework_(software)
+extract:71 | https://github.com/dvdstelt
+::debug::[same-org] Checking https://github.com/dvdstelt/hyperhawk/blob/main/README.md
+::debug::[same-org] URL points to current repo, suggesting local path: https://github.com/dvdstelt/hyperhawk/blob/main/README.md
+.github/ISSUE_TEMPLATE/bug_report.md:13 | https://github.com/dvdstelt/hyperhawk/blob/main/README.md | suggestion
+.github/ISSUE_TEMPLATE/bug_report.md:15 | ../docs/configuration.md | broken -> /docs/configuration.md
+codeblock:tests/test-document.md:82 | ../READM.md
+reloff:11 | ../release.ps | ok
+reloff:13 | ../tsconfig.jso | ok
+reloff:15 | ../action.ym | ok
+reloff:19 | ../READM.md#troubleshooting | ok
+reloff:23 | ../docs/setup-guide.md | ok
+reloff:25 | ../../faq/common-issues.md | ok
+reloff:27 | ../CONTRIBUTING.md | ok
+reloff:31 | ../LICENS.md | ok
+reloff:31 | ../READM.md | ok
+reloff:35 | ./configuration.md | ok
+reloff:37 | ./placeholder.md | ok
+reloff:41 | ../AGENTS.md | ok
+reloff:43 | ../action.yml | ok
+reloff:47 | ./file%20with%20spaces.md | ok
+reloff:7 | ../READM.md | ok
+reloff:82 | ../READM.md | ok
+reloff:9 | ../LICENS.md | ok
+reldepth1:11 | ../release.ps | broken
+reldepth1:13 | ../tsconfig.jso | broken
+reldepth1:15 | ../action.ym | broken
+reldepth1:19 | ../READM.md#troubleshooting | broken
+reldepth1:23 | ../docs/setup-guide.md | broken
+reldepth1:25 | ../../faq/common-issues.md | broken
+reldepth1:27 | ../CONTRIBUTING.md | broken
+reldepth1:31 | ../LICENS.md | broken
+reldepth1:31 | ../READM.md | broken
+reldepth1:35 | ./configuration.md | broken
+reldepth1:37 | ./placeholder.md | ok
+reldepth1:41 | ../AGENTS.md | ok
+reldepth1:43 | ../action.yml | ok
+reldepth1:47 | ./file%20with%20spaces.md | ok
+reldepth1:7 | ../READM.md | broken
+reldepth1:82 | ../READM.md | broken
+reldepth1:9 | ../LICENS.md | broken

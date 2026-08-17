@@ -32,12 +32,50 @@ const { version } = require('../package.json') as { version: string };
 
 async function run(): Promise<void> {
   try {
+    const banner = [
+      '                           :^!7?J55PPPP55YJ?7!~^:',
+      '                           :^~!7?J5B&@@@@@@@@@@&#G5J7^:',
+      '                    :^!?YPGB#&&&&@&&@@@@@@@@@@@@@@@@@&#PJ!:',
+      '           :~7?JY5GB&&&&&##&@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@#57!^',
+      '           :^~!7??777?J5GB&&@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@&&5!:',
+      '                :~?PB&@@@@@@@@@&#BGPPPPG#@@@@@@@@@@@@@@@@&BB&&&@@#7:',
+      '              :!5#@@@@&#BGP5YYJ??7!~^^::^!JP#&@@&&&@@&&@&#@B55GYB#&P^',
+      '            :?G&@@&&#GPYJ7!~~~^^::..........^!?J55YYPG55BGPB7^!777?#~',
+      '          ^Y&@@&#BG5?!!!~~^^^^^:::....^:^JY^....::::::~^^7!~^Y#@@&G5!:',
+      '        ^5&&GY5B#PJ?777777777777!!!~::J:PB7..^?^...........^5B#&&@@@#5!:',
+      '      :?G5!:7GBY7!!!!!777777777777777^77?B#GG#P^.........:~5BBG5JPB5G#@B?:',
+      '     ^?7: ^P#Y!!!!777!!!!7777777777777~~!!?JJ7^:::~~^^:^~7JBBJ~~7YYPPPG#@B~',
+      '     ::..?#B55Y?7!~~~^~~!!77777777777??7!~^:....^!7777??JYGBBP5555PPPPPPG&&!',
+      '        Y@@GY?7~^^~!!7777777777777!~~~~^^::^^^^~?Y5PGGBBBBBBP5PPPGPPPPPPPP&&^',
+      '       Y@&57!^^~7777777777!777777777!^:..7P5J??J????????JJ55YYJJY5555PPPPPP@Y',
+      '      J@B?!^:!777777!~~~~~~!!!!!77777!!^:~?JJJJJ?!~:........^~!7?77???J5PPPBB',
+      '     7@G7^.^77777!~~!77777!!~^^^^:::^^^~^^:::^~7J5PGPY7^..7PPY!::::^^!??YPPGB:',
+      '    :#G~:.7J777!!?5BGY?7!~^^::::::.::::::::.......:~?YYJ?JYJ7~:.....:^^77YPB5',
+      '    JB~..YP777?5G@@P?7~~^^~~~~^^::::...............~YGGPPPPGY~!~..:7Y?^:??PB!',
+      '   :B!.:PG77?5Y?GBJ7!~~~!!!~^^~~^::.............^?G#GJ!^^:^?PJ^?!JGBP?:.7?GJ',
+      '   !J..Y&?7JJ^~BG77!~!7777!!77~:..:.::........~YBB5?^:!55~:!!!!5BB57^:..!YJ',
+      '   !:.^&Y77~.~&G77777777777?!:::^^^^:.......^5BGJ!:...~JPGP55GBPJ!^7:..:J!',
+      '   :..JB7~:.^#G7777777?777?!^~!~~~~^..::....P#5~.......^~!?JJ?7~^!YG7..~^',
+      '      PY^...PB777!~7??!!77!!77~~~~~:.:^:...:PGY:....^JP5?!:.....^!JJ~',
+      '     :P^...!&?7!~~7?7^:77777?7!!~^^.^!^.....~YPPYJJ5BG5?~:.::',
+      '     ^!....55!~~~!~!:.^?7777777~:^~^7!:......^!JY55Y?!^....:^',
+      '          :5!~~^^:::..~??^~?7?7^.^~7?~:..^:.....::::......::~^',
+      '          ^!~~:.......^?7.:??7~^.:~!?!:.:~~:.............::^~~~:',
+      '          ~!~:........:7!..~?!::..:~7!^..^~~:..........::^..:~~~^:',
+      '         :~~...........^~...!7.....:~!~..:^~~^:..:.....:^~:...:^~~^:',
+      '         :^.............:....~:.....:^~^..:^~~~:^^......^~^......:::',
+      '                              :.......:^:...:~~~~:......:^~:',
+      '                                              :^^.........::',
+    ];
+    banner.forEach(line => core.info(line));
     core.info(`HyperHawk v${version}`);
     // Load config
     const token = core.getInput('token', { required: true });
     const filesInput = core.getInput('files') || '**/*.md,**/*.mdx';
     const checkExternal = core.getInput('check-external') !== 'false';
     const checkSameOrg = core.getInput('check-same-org') !== 'false';
+    const checkRelative = core.getInput('check-relative') !== 'false';
+    const relativeSuggestionDepth = parseRelativeSuggestionDepth(core.getInput('relative-suggestion-depth'));
     const ignorePatternsInput = core.getInput('ignore-patterns');
     const timeout = parseInt(core.getInput('timeout') || '10000', 10);
     const concurrency = parseInt(core.getInput('concurrency') || '5', 10);
@@ -45,6 +83,8 @@ async function run(): Promise<void> {
     const strictInput = core.getInput('strict');
     const strictEnv = process.env['LINK_CHECK_STRICT'];
     const strict = strictInput === 'true' || strictEnv === 'true';
+    const skipCodeBlocks = core.getInput('skip-code-blocks') === 'true';
+    const reportOnlyChanged = core.getInput('report-only-changed') === 'true';
 
     const repoRoot = process.env['GITHUB_WORKSPACE'] || process.cwd();
     const [owner, repo] = (process.env['GITHUB_REPOSITORY'] || '/').split('/');
@@ -63,10 +103,14 @@ async function run(): Promise<void> {
       strict,
       checkExternal,
       checkSameOrg,
+      checkRelative,
+      relativeSuggestionDepth,
       ignorePatterns,
       timeout,
       filePatterns,
       concurrency,
+      skipCodeBlocks,
+      reportOnlyChanged,
     };
 
     const octokit = getOctokit(token);
@@ -129,7 +173,7 @@ async function run(): Promise<void> {
     const results = await checkLinks(filteredLinks, config, octokit, crossRepoOctokit);
 
     // Report results
-    const brokenCount = await report(results, octokit);
+    const brokenCount = await report(results, octokit, config);
 
     // Fail workflow if strict mode
     if (strict && brokenCount > 0) {
@@ -138,6 +182,32 @@ async function run(): Promise<void> {
   } catch (err) {
     core.setFailed(`HyperHawk encountered an unexpected error: ${String(err)}`);
   }
+}
+
+// Relative links deeper than this should be disabled outright via
+// check-relative rather than exempted from suggestions one level at a time.
+const MAX_RELATIVE_SUGGESTION_DEPTH = 5;
+
+/**
+ * Parse and validate the relative-suggestion-depth input. Falls back to 0
+ * (only same-folder links exempt) for empty/invalid values, and clamps to
+ * MAX_RELATIVE_SUGGESTION_DEPTH with a warning when set too high.
+ */
+function parseRelativeSuggestionDepth(raw: string): number {
+  if (!raw) return 0;
+  const value = parseInt(raw, 10);
+  if (Number.isNaN(value) || value < 0) {
+    core.warning(`Invalid relative-suggestion-depth "${raw}"; falling back to 0.`);
+    return 0;
+  }
+  if (value > MAX_RELATIVE_SUGGESTION_DEPTH) {
+    core.warning(
+      `relative-suggestion-depth ${value} exceeds the maximum of ${MAX_RELATIVE_SUGGESTION_DEPTH}; ` +
+      `clamping to ${MAX_RELATIVE_SUGGESTION_DEPTH}. To skip relative-link checks entirely, set check-relative: false.`
+    );
+    return MAX_RELATIVE_SUGGESTION_DEPTH;
+  }
+  return value;
 }
 
 async function globFiles(patterns: string[], repoRoot: string): Promise<string[]> {

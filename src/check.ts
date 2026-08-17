@@ -223,12 +223,23 @@ async function checkInternal(link: LinkInfo, config: Config): Promise<CheckResul
     return { link, ok: true };
   }
 
-  const isRootRelative = urlWithoutAnchor.startsWith('/');
+  // Decode percent-encoded characters (e.g. %20 for spaces) so the path
+  // matches the actual filename on disk.
+  const decodedPath = decodeURIComponent(urlWithoutAnchor);
+
+  const isRootRelative = decodedPath.startsWith('/');
+
+  // Relative-link checking can be disabled entirely. Root-relative links
+  // (and anchors, handled above) are still verified.
+  if (!isRootRelative && !config.checkRelative) {
+    return { link, ok: true };
+  }
+
   const sourceDir = path.dirname(path.join(config.repoRoot, link.filePath));
 
   const resolvedPath = isRootRelative
-    ? path.join(config.repoRoot, urlWithoutAnchor)
-    : path.resolve(sourceDir, urlWithoutAnchor);
+    ? path.join(config.repoRoot, decodedPath)
+    : path.resolve(sourceDir, decodedPath);
 
   const exists = fs.existsSync(resolvedPath);
 
@@ -236,10 +247,13 @@ async function checkInternal(link: LinkInfo, config: Config): Promise<CheckResul
     // Link is valid. If it uses a relative path (not root-relative), suggest conversion.
     // However, skip the suggestion for same-folder links (e.g. "readme.md" or "./readme.md")
     // because they are simple and unlikely to break.
-    if (!isRootRelative) {
-      const normalized = urlWithoutAnchor.replace(/^\.\//, '');
-      const isSameFolder = !normalized.includes('/') && !normalized.includes('\\');
-      if (!isSameFolder) {
+    if (!isRootRelative && !isIssueTemplate(link.filePath)) {
+      // Suggest a root-relative conversion only for links that traverse more
+      // directory levels than the configured depth. Closer links (at or below
+      // the threshold, e.g. same-folder by default) are left as-is because
+      // they are simple and unlikely to break.
+      const depth = relativeLinkDepth(urlWithoutAnchor);
+      if (depth > config.relativeSuggestionDepth) {
         const anchor = hashIdx >= 0 ? url.slice(hashIdx) : '';
         const rootRelUrl = toRootRelative(resolvedPath, config.repoRoot) + anchor;
         const suggestion = link.lineContent.trimEnd().replace(url, rootRelUrl);
@@ -251,9 +265,9 @@ async function checkInternal(link: LinkInfo, config: Config): Promise<CheckResul
 
   // --- Link is broken: search for the target file ---
 
-  const filename = path.basename(urlWithoutAnchor);
-  const stem = path.basename(urlWithoutAnchor, path.extname(urlWithoutAnchor));
-  const ext = path.extname(urlWithoutAnchor);
+  const filename = path.basename(decodedPath);
+  const stem = path.basename(decodedPath, path.extname(decodedPath));
+  const ext = path.extname(decodedPath);
 
   let correctedAbs: string | undefined;
   let isFuzzy = false;
@@ -324,11 +338,46 @@ async function looksPrivate(owner: string, repo: string): Promise<boolean> {
 }
 
 /**
+ * Files in .github/ISSUE_TEMPLATE/ are rendered as GitHub issues, where
+ * relative and root-relative URLs do not work. Skip conversion suggestions
+ * for links inside these files.
+ */
+function isIssueTemplate(filePath: string): boolean {
+  return filePath.startsWith('.github/ISSUE_TEMPLATE/');
+}
+
+/**
+ * Count how many directory levels a relative link traverses, ignoring the
+ * filename itself. Each '..' (up) or named directory segment (down) counts
+ * as one level; '.' and empty segments are ignored.
+ *
+ *   readme.md         -> 0  (same folder)
+ *   ./readme.md       -> 0
+ *   ../readme.md      -> 1
+ *   sub/readme.md     -> 1
+ *   ../../readme.md   -> 2
+ *   ../sub/readme.md  -> 2
+ */
+function relativeLinkDepth(relativePath: string): number {
+  const segments = relativePath.replace(/\\/g, '/').split('/');
+  segments.pop(); // drop the filename
+  let depth = 0;
+  for (const segment of segments) {
+    if (segment === '' || segment === '.') continue;
+    depth++;
+  }
+  return depth;
+}
+
+/**
  * Suggest rewriting a full GitHub URL that points to the current repo
  * as a local path. Uses the same convention as checkInternal: same-folder
  * files use a bare filename, everything else uses a root-relative path.
  */
 function suggestLocalPath(link: LinkInfo, parts: string[], config: Config): CheckResult {
+  if (isIssueTemplate(link.filePath)) {
+    return { link, ok: true, suggestionOnly: true };
+  }
   // parts: [owner, repo, 'blob'|'tree', ref, ...pathParts] or [owner, repo, ...]
   const hasFilePath = parts.length > 4 && (parts[2] === 'blob' || parts[2] === 'tree');
 
@@ -490,16 +539,30 @@ async function checkSameOrg(link: LinkInfo, octokit: Octokit, config: Config): P
       const ref = parts[3];
       const filePath = parts.slice(4).join('/');
 
-      core.debug(`[same-org] Verifying file ${filePath} at ref ${ref} in ${repoOwner}/${repoName}`);
+      const urlKind = parts[2] as 'blob' | 'tree';
+      core.debug(`[same-org] Verifying ${urlKind} ${filePath} at ref ${ref} in ${repoOwner}/${repoName}`);
 
       try {
-        await octokit.rest.repos.getContent({
+        const content = await octokit.rest.repos.getContent({
           owner: repoOwner,
           repo: repoName,
           path: filePath,
           ref,
         });
         core.debug(`[same-org] File ${filePath} found in ${repoOwner}/${repoName}`);
+
+        // Suggest fixing blob/tree mismatch: /blob/ is for files, /tree/ is for directories.
+        const isArray = Array.isArray(content.data);
+        const contentType = isArray ? 'dir' : (content.data as { type: string }).type;
+        const expectedKind = contentType === 'dir' ? 'tree' : 'blob';
+        if (urlKind !== expectedKind) {
+          core.debug(`[same-org] ${filePath} is a ${contentType} but URL uses /${urlKind}/, suggesting /${expectedKind}/`);
+          const correctedUrl = link.url.replace(`/${urlKind}/${ref}/`, `/${expectedKind}/${ref}/`);
+          const suggestion = link.lineContent.trimEnd().replace(link.url, correctedUrl);
+          const r = { ok: true, correctedUrl, suggestionOnly: true };
+          resultCache.set(link.url, r);
+          return { link, ...r, suggestion };
+        }
       } catch (err: unknown) {
         const status = getStatusCode(err);
         core.debug(`[same-org] File ${filePath} in ${repoOwner}/${repoName} returned HTTP ${status ?? 'unknown'}: ${String(err)}`);
@@ -551,18 +614,79 @@ async function checkSameOrg(link: LinkInfo, octokit: Octokit, config: Config): P
 }
 
 /**
+ * Query parameters a server attaches to identify the visit rather than the
+ * content. support.google.com, for example, redirects to a URL carrying a
+ * `visit_id` session token that is stale the moment it is written down.
+ * Committing one of these into a markdown file is never what the author wants,
+ * so they are dropped from redirect suggestions. Anything prefixed `utm_` is
+ * treated the same way.
+ */
+const TRACKING_PARAMS = new Set([
+  'visit_id',                             // support.google.com session token
+  'rd',                                   // support.google.com redirect counter
+  'sjid',                                 // Google session join id
+  'gclid', 'dclid', 'fbclid', 'msclkid',  // ad platform click ids
+  'mc_cid', 'mc_eid',                     // Mailchimp campaign and email ids
+  '_ga', '_gl',                           // Google Analytics cross-domain linker
+]);
+
+function isTrackingParam(name: string): boolean {
+  return TRACKING_PARAMS.has(name) || name.startsWith('utm_');
+}
+
+/**
+ * Drop tracking parameters that the redirect introduced. A parameter already
+ * present on the original link is left alone: the author put it there
+ * deliberately, and this strips server noise, it does not rewrite intent.
+ */
+function stripTrackingParams(finalUrl: string, originalUrl: string): string {
+  let parsed: URL;
+  let original: URL;
+  try {
+    parsed = new URL(finalUrl);
+    original = new URL(originalUrl);
+  } catch {
+    return finalUrl;
+  }
+
+  const drop = [...parsed.searchParams.keys()].filter(
+    name => isTrackingParam(name) && !original.searchParams.has(name)
+  );
+  if (drop.length === 0) return finalUrl;
+
+  for (const name of drop) {
+    parsed.searchParams.delete(name);
+  }
+  return parsed.toString();
+}
+
+/**
+ * Returns true if two URLs are the same once parsed, so that a redirect which
+ * only added tracking noise is not mistaken for a content move.
+ */
+function isSameUrl(urlA: string, urlB: string): boolean {
+  if (urlA === urlB) return true;
+  try {
+    return new URL(urlA).toString() === new URL(urlB).toString();
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Build the final redirect URL, re-attaching the fragment from the original URL
  * when the redirect target does not include one (servers typically strip
  * fragments from Location headers).
  */
 function buildRedirectUrl(originalUrl: string, finalUrl: string): string {
+  const cleanedUrl = stripTrackingParams(finalUrl, originalUrl);
   const originalHash = originalUrl.indexOf('#') >= 0 ? originalUrl.slice(originalUrl.indexOf('#')) : '';
-  if (!originalHash) return finalUrl;
+  if (!originalHash) return cleanedUrl;
 
   // If the final URL already has a fragment, keep it as-is
-  if (finalUrl.indexOf('#') >= 0) return finalUrl;
+  if (cleanedUrl.indexOf('#') >= 0) return cleanedUrl;
 
-  return finalUrl + originalHash;
+  return cleanedUrl + originalHash;
 }
 
 /**
@@ -579,9 +703,25 @@ function isSameHost(urlA: string, urlB: string): boolean {
 }
 
 /**
+ * GitHub user-attachment assets (uploaded images/files in issues, PRs, and
+ * discussions) live under a fixed path and cannot be deleted without GitHub
+ * admin intervention, so they are effectively permanent. Verifying them
+ * would require passing GitHub auth headers through the S3 redirect chain,
+ * adding complexity for no real benefit. Trust them unconditionally.
+ */
+function isGitHubUserAttachment(url: string): boolean {
+  return url.startsWith('https://github.com/user-attachments/assets/');
+}
+
+/**
  * Check an external HTTP/HTTPS link.
  */
 async function checkExternal(link: LinkInfo, config: Config): Promise<CheckResult> {
+  if (isGitHubUserAttachment(link.url)) {
+    core.debug(`[external] ${link.url} is a GitHub user-attachment asset, treating as valid`);
+    return { link, ok: true };
+  }
+
   const cached = resultCache.get(link.url);
   if (cached) {
     // Reconstruct suggestion from cached correctedUrl since lineContent varies per call site
@@ -597,8 +737,13 @@ async function checkExternal(link: LinkInfo, config: Config): Promise<CheckResul
   try {
     let result = await followRedirects(link.url, 'HEAD', timeout, BROWSER_HEADERS);
 
-    // HEAD returned Method Not Allowed; retry with GET
-    if (result.status === 405) {
+    // Plenty of hosts mishandle HEAD: some answer 405 Method Not Allowed, others
+    // return an outright error for a page they serve fine on GET (support.google.com
+    // answers 404 to HEAD but 200 to GET). Retry every failing HEAD with GET so the
+    // verdict matches what a reader actually gets. Only failures pay the extra
+    // request, and followRedirects discards the body as soon as headers arrive.
+    if (result.status >= 400) {
+      core.debug(`[external] ${link.url} returned HTTP ${result.status} for HEAD - retrying with GET`);
       result = await followRedirects(link.url, 'GET', timeout, BROWSER_HEADERS);
     }
 
@@ -618,6 +763,13 @@ async function checkExternal(link: LinkInfo, config: Config): Promise<CheckResul
       // Cross-domain redirects are typically auth/login flows, not content moves.
       if (isSameHost(link.url, result.finalUrl)) {
         const correctedUrl = buildRedirectUrl(link.url, result.finalUrl);
+        // The redirect only added tracking noise, so there is nothing to fix.
+        if (isSameUrl(correctedUrl, link.url)) {
+          core.debug(`[external] ${link.url} redirected only to add tracking parameters - skipping suggestion`);
+          const r = { ok: true, statusCode: result.status };
+          resultCache.set(link.url, r);
+          return { link, ...r };
+        }
         const suggestion = link.lineContent.trimEnd().replace(link.url, () => correctedUrl);
         const r = { ok: true, statusCode: result.status, correctedUrl, suggestionOnly: true };
         resultCache.set(link.url, r);

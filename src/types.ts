@@ -28,8 +28,12 @@ export interface Config {
   strict: boolean;
   checkExternal: boolean;
   checkSameOrg: boolean;
+  checkRelative: boolean;
+  relativeSuggestionDepth: number;
   ignorePatterns: RegExp[];
   timeout: number;
   filePatterns: string[];
   concurrency: number;
+  skipCodeBlocks: boolean;
+  reportOnlyChanged: boolean;
 }

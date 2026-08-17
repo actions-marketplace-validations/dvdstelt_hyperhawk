@@ -32,7 +32,7 @@ function startRedirectServer(): Promise<{ baseUrl: string; close: () => Promise<
       } else if (url === '/redirect-301-step2') {
         res.writeHead(301, { Location: '/final' });
         res.end();
-      } else if (url === '/final') {
+      } else if (url === '/final' || url.startsWith('/final?')) {
         res.writeHead(200);
         res.end('OK');
 
@@ -79,6 +79,48 @@ function startRedirectServer(): Promise<{ baseUrl: string; close: () => Promise<
         res.writeHead(302, { Location: `http://localhost:${addr.port}/final` });
         res.end();
 
+      // Redirect that moves the page AND appends tracking params: the suggestion
+      // should point at the new path with the tracking params stripped
+      } else if (url.startsWith('/tracked-move')) {
+        res.writeHead(301, { Location: '/final?visit_id=639222257369492970-241975759&rd=2&utm_source=redirect' });
+        res.end();
+
+      // Redirect that only appends tracking params to the same path: once they
+      // are stripped there is nothing left to suggest
+      } else if (url === '/tracking-only') {
+        res.writeHead(301, { Location: '/tracking-only?visit_id=abc123&rd=1' });
+        res.end();
+      } else if (url.startsWith('/tracking-only?')) {
+        res.writeHead(200);
+        res.end('OK');
+
+      // Redirect that keeps a param the author already had, alongside a new
+      // tracking param: the author's param must survive
+      } else if (url.startsWith('/keeps-author-param')) {
+        res.writeHead(301, { Location: '/final?utm_source=author&visit_id=xyz789' });
+        res.end();
+
+      // Errors on HEAD but serves the page on GET (support.google.com behaviour)
+      } else if (url === '/head-404-get-200') {
+        if (req.method === 'HEAD') {
+          res.writeHead(404);
+          res.end();
+        } else {
+          res.writeHead(200);
+          res.end('OK');
+        }
+
+      // Errors on HEAD but redirects on GET: the GET retry must still yield a
+      // redirect suggestion rather than a broken-link report
+      } else if (url === '/head-404-get-redirect') {
+        if (req.method === 'HEAD') {
+          res.writeHead(404);
+          res.end();
+        } else {
+          res.writeHead(301, { Location: '/final' });
+          res.end();
+        }
+
       // 404 (broken link)
       } else {
         res.writeHead(404);
@@ -119,6 +161,13 @@ function buildExternalLinks(baseUrl: string, testFile: string): LinkInfo[] {
     { url: `${baseUrl}/auth-required`, text: 'auth required', line: 1008, lineContent: `[auth required](${baseUrl}/auth-required)` },
     { url: `${baseUrl}/cross-domain-redirect`, text: 'cross-domain redirect', line: 1009, lineContent: `[cross-domain redirect](${baseUrl}/cross-domain-redirect)` },
     { url: `${baseUrl}/not-found`, text: 'plain 404', line: 1010, lineContent: `[plain 404](${baseUrl}/not-found)` },
+    { url: `${baseUrl}/head-404-get-200`, text: 'head 404 get 200', line: 1012, lineContent: `[head 404 get 200](${baseUrl}/head-404-get-200)` },
+    { url: `${baseUrl}/head-404-get-redirect`, text: 'head 404 get redirect', line: 1013, lineContent: `[head 404 get redirect](${baseUrl}/head-404-get-redirect)` },
+    { url: `${baseUrl}/tracked-move`, text: 'tracked move', line: 1014, lineContent: `[tracked move](${baseUrl}/tracked-move)` },
+    { url: `${baseUrl}/tracking-only`, text: 'tracking only', line: 1015, lineContent: `[tracking only](${baseUrl}/tracking-only)` },
+    { url: `${baseUrl}/keeps-author-param?utm_source=author`, text: 'keeps author param', line: 1016, lineContent: `[keeps author param](${baseUrl}/keeps-author-param?utm_source=author)` },
+    { url: `${baseUrl}/tracked-move#my-anchor`, text: 'tracked move with fragment', line: 1017, lineContent: `[tracked move with fragment](${baseUrl}/tracked-move#my-anchor)` },
+    { url: 'https://github.com/user-attachments/assets/35163316-65df-4f8d-bf85-03650025a7b4', text: 'user attachment', line: 1011, lineContent: '[user attachment](https://github.com/user-attachments/assets/35163316-65df-4f8d-bf85-03650025a7b4)' },
   ];
 
   return entries.map(e => ({
@@ -131,14 +180,151 @@ function buildExternalLinks(baseUrl: string, testFile: string): LinkInfo[] {
   }));
 }
 
+/**
+ * Verify that links inside .github/ISSUE_TEMPLATE/ files do not get
+ * local-path or root-relative conversion suggestions, because issue
+ * templates are rendered as GitHub issues where relative URLs do not work.
+ */
+async function runIssueTemplateTest(repoRoot: string, testFile: string): Promise<void> {
+  const config: Config = {
+    token: '',
+    repoRoot,
+    owner: 'dvdstelt',
+    repo: 'hyperhawk',
+    strict: false,
+    checkExternal: false,
+    checkSameOrg: true,
+    checkRelative: true,
+    relativeSuggestionDepth: 0,
+    ignorePatterns: [],
+    timeout: 5000,
+    filePatterns: ['.github/ISSUE_TEMPLATE/bug_report.md'],
+    concurrency: 1,
+    skipCodeBlocks: false,
+    reportOnlyChanged: false,
+  };
+
+  const links = extractLinks(testFile, config);
+  const results = await checkLinks(links, config, null as any);
+
+  const stabilize = (s: string): string =>
+    s.replaceAll(repoRoot, '<root>').replaceAll(path.dirname(repoRoot), '<parent>');
+
+  const lines = results
+    .map(r => {
+      const rel = path.relative(repoRoot, r.link.filePath).replace(/\\/g, '/');
+      const status = r.ok ? (r.suggestionOnly ? 'suggestion' : 'ok') : 'broken';
+      let detail = '';
+      if (!r.ok && r.correctedUrl) {
+        detail = r.isFuzzyMatch ? ` -> ${r.correctedUrl} (fuzzy)` : ` -> ${r.correctedUrl}`;
+      } else if (r.suggestionOnly && r.correctedUrl) {
+        detail = ` -> ${stabilize(r.correctedUrl)}`;
+      } else if (!r.ok) {
+        const err = stabilize(r.error ?? 'unknown');
+        detail = ` | ${err}`;
+      }
+      return `${rel}:${r.link.line} | ${stabilize(r.link.url)} | ${status}${detail}`;
+    })
+    .sort();
+
+  process.stdout.write(lines.join('\n') + '\n');
+}
+
+/**
+ * Verify that links inside fenced code blocks are skipped when
+ * skipCodeBlocks is enabled, and that links after the code block
+ * are still extracted.
+ */
+async function runCodeBlockTest(repoRoot: string, testFile: string): Promise<void> {
+  const config: Config = {
+    token: '',
+    repoRoot,
+    owner: 'dvdstelt',
+    repo: 'hyperhawk',
+    strict: false,
+    checkExternal: false,
+    checkSameOrg: false,
+    checkRelative: true,
+    relativeSuggestionDepth: 0,
+    ignorePatterns: [],
+    timeout: 5000,
+    filePatterns: ['tests/test-document.md'],
+    concurrency: 1,
+    skipCodeBlocks: true,
+    reportOnlyChanged: false,
+  };
+
+  const allLinks = extractLinks(testFile, config);
+  // Only look at links from the code block test section (lines 74+)
+  const codeBlockLinks = allLinks.filter(l => l.line >= 74);
+
+  const lines = codeBlockLinks
+    .map(l => {
+      const rel = path.relative(repoRoot, l.filePath).replace(/\\/g, '/');
+      return `codeblock:${rel}:${l.line} | ${l.url}`;
+    })
+    .sort();
+
+  process.stdout.write(lines.join('\n') + '\n');
+}
+
+/**
+ * Verify the relative-link controls:
+ *  - check-relative: false skips relative links entirely (all reported ok)
+ *  - relative-suggestion-depth raises the threshold below which valid
+ *    relative links are not given a root-relative conversion suggestion
+ *    (depth 1 exempts one-level links like ../AGENTS.md and ../action.yml)
+ */
+async function runRelativeControlsTest(repoRoot: string, testFile: string): Promise<void> {
+  const base: Config = {
+    token: '',
+    repoRoot,
+    owner: 'dvdstelt',
+    repo: 'hyperhawk',
+    strict: false,
+    checkExternal: false,
+    checkSameOrg: false,
+    checkRelative: true,
+    relativeSuggestionDepth: 0,
+    ignorePatterns: [],
+    timeout: 5000,
+    filePatterns: ['tests/test-document.md'],
+    concurrency: 1,
+    skipCodeBlocks: false,
+    reportOnlyChanged: false,
+  };
+
+  const internalLinks = extractLinks(testFile, base).filter(l => l.type === 'internal');
+
+  const summarize = async (prefix: string, config: Config): Promise<void> => {
+    const results = await checkLinks(internalLinks, config, null as any);
+    const lines = results
+      .map(r => {
+        const status = r.ok ? (r.suggestionOnly ? 'suggestion' : 'ok') : 'broken';
+        return `${prefix}:${r.link.line} | ${r.link.url} | ${status}`;
+      })
+      .sort();
+    process.stdout.write(lines.join('\n') + '\n');
+  };
+
+  // Relative checking disabled: every relative link is skipped (ok).
+  await summarize('reloff', { ...base, checkRelative: false });
+  // Depth 1: same-folder and one-level links are exempt from suggestions.
+  await summarize('reldepth1', { ...base, relativeSuggestionDepth: 1 });
+}
+
 async function main(): Promise<void> {
   const repoRoot = path.resolve(__dirname, '..');
   const testFile = path.join(repoRoot, 'tests', 'test-document.md');
+  const issueTemplateFile = path.join(repoRoot, '.github', 'ISSUE_TEMPLATE', 'bug_report.md');
 
   const { baseUrl, close: closeServer } = await startRedirectServer();
 
   try {
     await runTests(repoRoot, testFile, baseUrl);
+    await runIssueTemplateTest(repoRoot, issueTemplateFile);
+    await runCodeBlockTest(repoRoot, testFile);
+    await runRelativeControlsTest(repoRoot, testFile);
   } finally {
     await closeServer();
   }
@@ -173,10 +359,14 @@ async function runTests(repoRoot: string, testFile: string, baseUrl: string): Pr
     strict: false,
     checkExternal: true,
     checkSameOrg: true,
+    checkRelative: true,
+    relativeSuggestionDepth: 0,
     ignorePatterns: [],
     timeout: 5000,
     filePatterns: ['tests/test-document.md'],
     concurrency: 1,
+    skipCodeBlocks: false,
+    reportOnlyChanged: false,
   };
 
   const links = extractLinks(testFile, config);
@@ -239,6 +429,16 @@ async function runTests(repoRoot: string, testFile: string, baseUrl: string): Pr
 
   if (mergeLines.length > 0) {
     process.stdout.write(mergeLines.join('\n') + '\n');
+  }
+
+  // --- Extraction test: verify external URLs from the test document were parsed correctly ---
+  // This catches regex bugs (e.g. URLs with balanced parentheses being truncated).
+  const extractedExternal = links
+    .filter(l => l.type === 'external')
+    .map(l => `extract:${l.line} | ${l.url}`)
+    .sort();
+  if (extractedExternal.length > 0) {
+    process.stdout.write(extractedExternal.join('\n') + '\n');
   }
 
   restoreStdout();

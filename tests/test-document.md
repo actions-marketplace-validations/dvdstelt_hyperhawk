@@ -42,6 +42,10 @@ Look at the [agents guide](../AGENTS.md) for coding conventions.
 
 The [action config](../action.yml) has all the inputs documented.
 
+## Percent-encoded Paths (spaces in filenames)
+
+See the [file with spaces](./file%20with%20spaces.md) for an example.
+
 ## Skipped Links (should not be checked)
 
 Contact us at [email](mailto:user@domain.net) for support.
@@ -58,6 +62,21 @@ The [missing file](https://github.com/dvdstelt/hyperhawk/blob/main/does-not-exis
 
 The [configuration guide](https://github.com/dvdstelt/hyperhawk/blob/main/docs/configuraton.md) has a typo and should fuzzy-match to the real file.
 
+## URLs with Parentheses (e.g. Wikipedia)
+
+Learn about [.NET](https://en.wikipedia.org/wiki/.NET_Framework_(software)) on Wikipedia.
+
 ## External Links (verified when external checking is enabled)
 
 Thanks to [@dvdstelt](https://github.com/dvdstelt) for the contribution.
+
+## Links Inside Code Blocks (should be skipped when skip-code-blocks is enabled)
+
+```yaml
+- uses: dvdstelt/hyperhawk@v1
+  with:
+    token: ${{ secrets.GITHUB_TOKEN }}
+    files: '**/*.md,!docs/internal-only.md'
+```
+
+Here is some text with a [link after the code block](../READM.md) that should still be checked.

@@ -57,3 +57,67 @@ Common use cases:
 On pull requests, only changed files are scanned. Broken links in files that are not part of the diff are reported as check annotations rather than inline comments.
 
 The following directories are always excluded from scanning: `node_modules/`, `.git/`, `dist/`, `lib/`.
+
+## Relative link checking
+
+HyperHawk checks relative file links (`../guide.md`, `./guide.md`, `folder/guide.md`) by resolving them against the file they appear in. Two inputs control this behaviour.
+
+### Disabling relative links entirely
+
+Set `check-relative: false` to skip relative links completely. They are neither validated for broken targets nor offered root-relative conversion suggestions. Root-relative links (`/docs/guide.md`) and anchors (`#section`) are still checked.
+
+```yaml
+- uses: dvdstelt/hyperhawk@v1
+  with:
+    token: ${{ secrets.GITHUB_TOKEN }}
+    check-relative: false
+```
+
+### Tuning conversion-suggestion depth
+
+Working relative links get a suggestion to convert them to root-relative paths (see [How it works](/docs/how-it-works.md#root-relative-path-suggestions)). Links that stay close to the current file often "belong together" and moving them in tandem is unlikely to break the link, so a suggestion is just noise.
+
+`relative-suggestion-depth` sets how many directory levels a link may traverse before a suggestion is offered. A link's depth counts each `..` (up) or named directory (down) segment, ignoring the filename:
+
+| Link | Depth |
+|------|-------|
+| `readme.md`, `./readme.md` | 0 (same folder) |
+| `../readme.md`, `folder/readme.md` | 1 |
+| `../../readme.md`, `../folder/readme.md` | 2 |
+
+Links at or below the configured depth are left as-is; deeper links still get a suggestion. The default `0` exempts only same-folder links (the original behaviour). For example, `relative-suggestion-depth: 1` also leaves `../readme.md` and `folder/readme.md` alone:
+
+```yaml
+- uses: dvdstelt/hyperhawk@v1
+  with:
+    token: ${{ secrets.GITHUB_TOKEN }}
+    relative-suggestion-depth: 1
+```
+
+This only suppresses the conversion suggestion; genuinely broken relative links are still reported regardless of depth. The maximum is `5`. If you want to suppress suggestions for links deeper than that, disable relative checking with `check-relative: false` instead.
+
+## Skip code blocks
+
+By default, links inside fenced code blocks are checked like any other link. If your code blocks contain example URLs or configuration snippets that should not be validated, enable `skip-code-blocks`:
+
+```yaml
+- uses: dvdstelt/hyperhawk@v1
+  with:
+    token: ${{ secrets.GITHUB_TOKEN }}
+    skip-code-blocks: true
+```
+
+When enabled, any content between `` ``` `` or `~~~` fences is skipped during link extraction.
+
+## Report only changed lines
+
+By default, broken links found on unchanged lines in a PR produce check warning annotations. To suppress these and only report issues on lines you actually changed, enable `report-only-changed`:
+
+```yaml
+- uses: dvdstelt/hyperhawk@v1
+  with:
+    token: ${{ secrets.GITHUB_TOKEN }}
+    report-only-changed: true
+```
+
+This is useful for incremental adoption: you get feedback only on lines in the diff, without noise from pre-existing broken links elsewhere in the file.
